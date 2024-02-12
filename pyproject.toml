@@ -1,0 +1,37 @@
+[project]
+name = "alphazero"
+version = "0.1.0"
+description = "CS3A AlphaZero RL project"
+# keywords = ["game", "ai", "sokoban", "reinforcement learning", "rl", "deep learning", "neural networks"]
+# readme = "cs3arl/README.md" # does not work...
+# license = {text = "MIT License"}
+requires-python = ">=3.10"
+
+authors = [
+    {name = "Tom Labiausse", email = "tom.labiausse@student-cs.fr"},
+    {name = "Amine Cherif Haouat", email = "amine.cherifhaouat@student-cs.fr"},
+    {name = "Sami Jallouli", email = "sami.jallouli@student-cs.fr"},
+]
+
+# urls = {source = "https://github.com/t0m1ab/CS3A_RL_project"}
+
+# automatically install the following packages when installing the project (no need to pip install -r requirements.txt)
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "tqdm",
+]
+
+# optional dependencies are not installed by default but can be if specified like so: pip install .[dev]
+[project.optional-dependencies]
+dev = [
+    "toml",
+    "ipykernel",
+]
+
+# [project.scripts]
+# cs3arl = "cs3arl.__main__:main"
+
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = ["flit_core >=3.2,<4"]
