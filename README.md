@@ -37,6 +37,11 @@ pip install -e .
 ### docs/
 * `help.txt`: general informations
 
+### figures/
+* `othello_board_8x8_init.png`: example of Othello 8x8 board display
+
+<img src='./alphazero/figures/othello_board_8x8_init.png' width='300'>
+
 ## 2 - Demo
 
 ### 2.1 - Play against MCTSPlayer
@@ -45,7 +50,7 @@ pip install -e .
 python game_ui.py
 ```
 
-Change code in `game_ui.py` to modify the machine player and/or the game settings.
+Change code in `game_ui.py` to modify the machine player and/or the game settings. The state of the board will be automatically saved as a PNG file in `outputs/` and overwrite itself after each move.
 
 ### 2.2 - Compare machine players
 
