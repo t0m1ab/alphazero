@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-from alphazero.games.board import Board
+from alphazero.base import Board
 
 
 class OthelloBoard(Board):
@@ -33,6 +33,7 @@ class OthelloBoard(Board):
         self.n = n
         self.cells = board if board is not None else self.get_init_board()
         self.player = player
+        self.pass_move = (self.n, self.n)
     
     def get_init_board(self) -> np.ndarray:
         """ Returns the initial board state as a 2D np.ndarray representing the content of each cell. """  
@@ -43,6 +44,20 @@ class OthelloBoard(Board):
         cells[self.n//2][self.n//2-1] = -1
         return cells
     
+    def reset(self) -> None:
+        """ Resets the board to the initial state. """
+        self.cells = self.get_init_board()
+        self.player = 1
+    
+    def clone(self):
+        """ Returns a deep copy of the board. """
+        return OthelloBoard(
+            n=self.n, 
+            board=self.cells.copy(), 
+            player=self.player,
+            display_dir=self.display_dir,
+        )
+    
     def get_board_size(self) -> tuple[int, int]:
         return (self.n, self.n)
     
@@ -52,47 +67,62 @@ class OthelloBoard(Board):
     
     def get_score(self) -> int:
         """ Returns the current score of the board from the viewpoint of self.player. """
-        return np.sum(self.player * self.cells)
+        return np.sum(self.player * self.cells).astype(int)
     
     def is_a_cell(self, cell: tuple[int, int]) -> bool:
         """ Returns True if the cell is in the board, False otherwise. """
         return 0 <= cell[0] < self.n and 0 <= cell[1] < self.n
     
-    def is_legal_move(self, move: tuple[int, int]) -> bool:
-        """ Returns True if the move is legal, False otherwise (considering that it is a move for self.player). """
-        if not self.is_a_cell(move) or self.cells[move[0]][move[1]] != 0:
+    def is_legal_move(self, move: tuple[int, int], player: int = None) -> bool:
+        """ Returns True if the move is legal, False otherwise (considering that it is a move for player <player>). """
+        
+        if move == self.pass_move: # must check all free positions to see if the player can pass
+            for row in range(self.n):
+                for col in range(self.n):
+                    if self.cells[row][col] == 0:
+                        for dir in OthelloBoard.DIRECTIONS:
+                            if len(self.get_flips((row,col), dir, player)) > 0:
+                                return False
+            return True
+        
+        if not self.is_a_cell(move) or self.cells[move[0]][move[1]] != 0: # check if the cell is real and empty
             return False
         
-        for dir in OthelloBoard.DIRECTIONS:
-            if len(self.get_flips(move, dir)) > 0:
+        for dir in OthelloBoard.DIRECTIONS: # check if the move would flip at least one piece
+            if len(self.get_flips(move, dir, player)) > 0:
                 return True
             
         return False
     
-    def get_moves(self) -> list[tuple[int, int]]:
-        """ Returns all possible moves for the current player. """
-        moves = []
+    def get_moves(self, player: int = None) -> list[tuple[int, int]]:
+        """ 
+        Returns all possible moves for player <player> which is self.player is <player> is None. 
+        If no move is available, returns [self.pass_move].
+        Move self.pass_move is included in <moves> only when no other move is available to <player>.
+        """
+        moves = set()
         for row in range(self.n):
             for col in range(self.n):
-                if self.is_legal_move((row, col)):
-                    moves.append((row, col))
-        return moves
+                if self.is_legal_move((row,col), player):
+                    moves.add((row, col))
+        if len(moves) == 0: # player can only pass if no move is available
+            moves.add(self.pass_move)
+        return list(moves)
     
-    def sample_move(self) -> tuple[int, int]:
-        """ Returns a random move for the current player. If no move is available, returns (self.n, self.n) to pass."""
-        available_moves = self.get_moves()
-        if len(available_moves) == 0: # no move available for the current player => pass
-            return (self.n, self.n)
+    def get_random_move(self, player: int = None) -> tuple[int, int]:
+        """ Returns a random move for player <player>. If no move is available, returns (self.n, self.n) to pass."""
+        available_moves = self.get_moves(player)
         return available_moves[np.random.choice(len(available_moves))]
     
-    def get_flips(self, cell: tuple[int,int], dir: tuple[int,int]) -> list[tuple[int, int]]:
-        """ Returns all the flips that would occur in the given direction <dir> if self.player plays in <cell>. """
+    def get_flips(self, cell: tuple[int,int], dir: tuple[int,int], player: int = None) -> list[tuple[int, int]]:
+        """ Returns all the flips that would occur in the given direction <dir> if player <player> plays in <cell>. """
+        player = player if player in [-1,1] else self.player
         flips = []
         c = (cell[0] + dir[0], cell[1] + dir[1])
         while self.is_a_cell(c):
             if self.cells[c[0]][c[1]] == 0: # empty cell is breaking the sequence
                 return []
-            elif self.cells[c[0]][c[1]] == self.player: # sequence ends
+            elif self.cells[c[0]][c[1]] == player: # sequence ends
                 return flips
             flips.append(c) # sequence continues because the cell is occupied by the opponent
             c = (c[0] + dir[0], c[1] + dir[1])
@@ -100,13 +130,13 @@ class OthelloBoard(Board):
     
     def play_move(self, move: tuple[int, int]) -> None:
         """ Plays the move on the board. """
-
-        if move == (self.n, self.n): # pass
-            self.player = -self.player
-            return
         
         if not self.is_legal_move(move):
             raise ValueError(f"Illegal move {move} for player {self.player}")
+        
+        if move == (self.n, self.n): # pass
+            self.player = -self.player
+            return
         
         for dir in OthelloBoard.DIRECTIONS: # flip the pieces in all directions if needed
             for cell in self.get_flips(move, dir):
@@ -114,6 +144,25 @@ class OthelloBoard(Board):
         self.cells[move[0]][move[1]] = self.player # place the new piece on the board
         self.player = -self.player # switch player
     
+    def is_game_over(self) -> bool:
+        """ Returns True if the game is over, False otherwise. """
+        player1_moves = self.get_moves(player=1)
+        player2_moves = self.get_moves(player=-1)
+        if (self.pass_move not in player1_moves) or (self.pass_move not in player2_moves):
+            return False 
+        else:
+            return True
+
+    def get_winner(self) -> int:
+        """ Returns the id of the winner of the game (1 or -1) or 0 if the game is a draw."""
+        if not self.is_game_over():
+            raise ValueError("Game is not over yet...")
+        score = self.get_score()
+        if score == 0: # draw
+            return 0
+        else: # return the id of the player who has the positive score
+            return self.player if score > 0 else -self.player
+        
     def display(self, indexes: bool = True, filename: str = None) -> None:
         """ 
         Displays the board in a grid, each cell being filled with a circle if there is a piece on it.
@@ -164,19 +213,25 @@ def random_play(n: int = 8, n_turns: int = 100, display_dir: str = None) -> None
     board = OthelloBoard(n=n, display_dir=display_dir)
 
     for turn_i in range(n_turns):
-        player1_random_move = board.sample_move()
+        player1_random_move = board.get_random_move()
         board.play_move(player1_random_move)
-        player2_random_move = board.sample_move()
+        player2_random_move = board.get_random_move()
         board.play_move(player2_random_move)
         print(f"#{turn_i} - Player 1 played {player1_random_move} | Player 2 played {player2_random_move}")
         if player1_random_move == (n,n) and player2_random_move == (n,n):
             print("> Both players passed, game over!")
+            score = board.get_score()
+            if score == 0:
+                print("> Draw!")
+            else:
+                print(f"> Player {board.get_winner()} won the game with score: {score}")
             break
     
     board.display(indexes=True)
 
 
 def main():
+    
     _ = OthelloBoard(n=8)
     print("OthelloBoard created successfully!")
     # random_play()
