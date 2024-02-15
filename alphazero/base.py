@@ -76,17 +76,17 @@ class Player():
     If you need to implement other methods, please use __method_name naming to make them private.
     """
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, verbose: bool = False) -> None:
+        self.verbose = verbose
 
     def __str__(self) -> str:
         return self.__class__.__name__
     
-    def clone(self, *args, **kwargs) -> "Player":
+    def clone(self) -> "Player":
         """ Returns a deep copy of the player. """
         raise NotImplementedError
 
-    def reset(self, verbose: bool = False) -> None:
+    def reset(self) -> None:
         """ Resets the internal state of the player. """
         pass
 

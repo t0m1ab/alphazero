@@ -30,10 +30,10 @@ alphazero --help
 * `mcts.py`: implement Monte Carlo Tree Search
 * `trainers.py`: TODO
 * `arena.py`: organize several games between players and compare results
-* `game_ui.py`: interface between user and algorithm to play a game
+* `game_ui.py`: interface between user and algorithm to play a game (TODO using gradio)
 * `contests.py`: define specific contests between players
 * `utils.py`: utility functions
-* `sandbox.ipynb`: notebook for experimentations
+* `tests.py`: contains various test that can be run to check the implementation
 
 ### games/
 * `othello.py`: implementation of Othello env

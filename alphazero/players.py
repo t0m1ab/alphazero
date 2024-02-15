@@ -10,15 +10,14 @@ class HumanPlayer(Player):
     Player asking the user to choose the move to play.
     """
 
-    def __init__(self) -> None:
-        super().__init__()
-    
-    def reset(self, verbose: bool = False) -> None:
-        if verbose:
-            print("Hint: HumanPlayer moves should be entered in the format 'row col' or 'row,col' or 'row-col' (e.g. '3 4').")
+    def __init__(self, verbose: bool = False) -> None:
+        super().__init__(verbose=verbose)
     
     def __parse_input(self, input: str) -> tuple[int,int]:
-        """ Parse the input string asked in get_move() to extract the move. """
+        """ 
+        Parse the input string asked in get_move() to extract the move. 
+        HumanPlayer moves should be entered in the format 'row col' or 'row,col' or 'row-col' (e.g. '3 4').
+        """
         if len(input) != 3: # error
             return None
         else:
@@ -57,13 +56,16 @@ class RandomPlayer(Player):
     Player selecting a random legal move at each turn.
     """
 
-    def __init__(self, lock_time: float = None) -> None:
-        super().__init__()
+    def __init__(self, lock_time: float = None, verbose: bool = False) -> None:
+        super().__init__(verbose=verbose)
         self.lock_time = lock_time # in seconds
     
-    def clone(self, verbose: bool = None) -> "RandomPlayer":
+    def clone(self) -> "RandomPlayer":
         """ Returns a deep copy of the player. """
-        return RandomPlayer(lock_time=self.lock_time)
+        return RandomPlayer(
+            lock_time=self.lock_time,
+            verbose=self.verbose,
+        )
     
     def get_move(self, board: Board) -> tuple[int,int]:
         if self.lock_time is not None: # for display purposes for example
@@ -79,7 +81,7 @@ class MCTSPlayer(Player):
     """
 
     def __init__(self, n_sim: int = None, compute_time: float = None, verbose: bool = False) -> None:
-        super().__init__()
+        super().__init__(verbose=verbose)
         self.n_sim = n_sim
         self.compute_time = compute_time
         if self.n_sim is None and self.compute_time is None:
@@ -87,17 +89,16 @@ class MCTSPlayer(Player):
         if self.n_sim is not None and self.compute_time is not None:
             raise ValueError("MCTSPlayer can't have both n_sim and compute_time specified.")
         self.mct = MCT()
-        self.verbose = verbose
     
-    def clone(self, verbose: bool = None) -> "MCTSPlayer":
+    def clone(self) -> "MCTSPlayer":
         """ Returns a deep copy of the player. """
         return MCTSPlayer(
             n_sim=self.n_sim, 
             compute_time=self.compute_time, 
-            verbose=self.verbose if verbose is None else verbose,
+            verbose=self.verbose,
         )
 
-    def reset(self, verbose: bool = False) -> None:
+    def reset(self) -> None:
         self.mct = MCT()
     
     def apply_move(self, move, player: int = None) -> None:

@@ -18,7 +18,7 @@ def test_object_creation():
     othello_main()
     arena_main()
 
-    print(f"> Import test successfully executed in {time() - start_test:.3f} seconds.")
+    print(f"> Object initialization successfully executed in {time() - start_test:.3f} seconds.")
 
 
 def run_tests():
