@@ -9,7 +9,7 @@ from alphazero.base import Board
 
 class OthelloBoard(Board):
     """
-    Class representing the Othello board and implementing the rules of the game.
+    Class representing the Othello board and implementing the logic of the game.
     The board is represented by a 2D numpy array of size n x n, where n is the size of the board.
     The cells are filled with 1 if there is a black piece, -1 if there is a white piece, and 0 if the cell is empty.
     """
@@ -31,11 +31,11 @@ class OthelloBoard(Board):
             raise ValueError("Board size must be even")
 
         self.n = n
-        self.cells = board if board is not None else self.get_init_board()
+        self.cells = board if board is not None else self.__get_init_board()
         self.player = player
-        self.pass_move = (self.n, self.n)
+        self.pass_move = (self.n, self.n) # pass is allowed in Othello only when a player has no legal move
     
-    def get_init_board(self) -> np.ndarray:
+    def __get_init_board(self) -> np.ndarray:
         """ Returns the initial board state as a 2D np.ndarray representing the content of each cell. """  
         cells = np.zeros((self.n, self.n))
         cells[self.n//2-1][self.n//2-1] = 1
@@ -46,10 +46,10 @@ class OthelloBoard(Board):
     
     def reset(self) -> None:
         """ Resets the board to the initial state. """
-        self.cells = self.get_init_board()
+        self.cells = self.__get_init_board()
         self.player = 1
     
-    def clone(self):
+    def clone(self) -> "OthelloBoard":
         """ Returns a deep copy of the board. """
         return OthelloBoard(
             n=self.n, 
@@ -69,9 +69,23 @@ class OthelloBoard(Board):
         """ Returns the current score of the board from the viewpoint of self.player. """
         return np.sum(self.player * self.cells).astype(int)
     
-    def is_a_cell(self, cell: tuple[int, int]) -> bool:
+    def __is_a_cell(self, cell: tuple[int, int]) -> bool:
         """ Returns True if the cell is in the board, False otherwise. """
         return 0 <= cell[0] < self.n and 0 <= cell[1] < self.n
+    
+    def __get_flips(self, cell: tuple[int,int], dir: tuple[int,int], player: int = None) -> list[tuple[int, int]]:
+        """ Returns all the flips that would occur in the given direction <dir> if player <player> plays in <cell>. """
+        player = player if player in [-1,1] else self.player
+        flips = []
+        c = (cell[0] + dir[0], cell[1] + dir[1])
+        while self.__is_a_cell(c):
+            if self.cells[c[0]][c[1]] == 0: # empty cell is breaking the sequence
+                return []
+            elif self.cells[c[0]][c[1]] == player: # sequence ends
+                return flips
+            flips.append(c) # sequence continues because the cell is occupied by the opponent
+            c = (c[0] + dir[0], c[1] + dir[1])
+        return []
     
     def is_legal_move(self, move: tuple[int, int], player: int = None) -> bool:
         """ Returns True if the move is legal, False otherwise (considering that it is a move for player <player>). """
@@ -81,15 +95,15 @@ class OthelloBoard(Board):
                 for col in range(self.n):
                     if self.cells[row][col] == 0:
                         for dir in OthelloBoard.DIRECTIONS:
-                            if len(self.get_flips((row,col), dir, player)) > 0:
+                            if len(self.__get_flips((row,col), dir, player)) > 0:
                                 return False
             return True
         
-        if not self.is_a_cell(move) or self.cells[move[0]][move[1]] != 0: # check if the cell is real and empty
+        if not self.__is_a_cell(move) or self.cells[move[0]][move[1]] != 0: # check if the cell is real and empty
             return False
         
         for dir in OthelloBoard.DIRECTIONS: # check if the move would flip at least one piece
-            if len(self.get_flips(move, dir, player)) > 0:
+            if len(self.__get_flips(move, dir, player)) > 0:
                 return True
             
         return False
@@ -113,21 +127,7 @@ class OthelloBoard(Board):
         """ Returns a random move for player <player>. If no move is available, returns (self.n, self.n) to pass."""
         available_moves = self.get_moves(player)
         return available_moves[np.random.choice(len(available_moves))]
-    
-    def get_flips(self, cell: tuple[int,int], dir: tuple[int,int], player: int = None) -> list[tuple[int, int]]:
-        """ Returns all the flips that would occur in the given direction <dir> if player <player> plays in <cell>. """
-        player = player if player in [-1,1] else self.player
-        flips = []
-        c = (cell[0] + dir[0], cell[1] + dir[1])
-        while self.is_a_cell(c):
-            if self.cells[c[0]][c[1]] == 0: # empty cell is breaking the sequence
-                return []
-            elif self.cells[c[0]][c[1]] == player: # sequence ends
-                return flips
-            flips.append(c) # sequence continues because the cell is occupied by the opponent
-            c = (c[0] + dir[0], c[1] + dir[1])
-        return []
-    
+      
     def play_move(self, move: tuple[int, int]) -> None:
         """ Plays the move on the board. """
         
@@ -139,7 +139,7 @@ class OthelloBoard(Board):
             return
         
         for dir in OthelloBoard.DIRECTIONS: # flip the pieces in all directions if needed
-            for cell in self.get_flips(move, dir):
+            for cell in self.__get_flips(move, dir):
                 self.cells[cell[0]][cell[1]] = self.player
         self.cells[move[0]][move[1]] = self.player # place the new piece on the board
         self.player = -self.player # switch player

@@ -1,32 +1,14 @@
 import numpy as np
 from time import sleep
 
-from alphazero.base import Board
+from alphazero.base import Board, Player
 from alphazero.mcts import MCT
 
 
-class Player():
-
-    def __init__(self) -> None:
-        pass
-
-    def __str__(self) -> str:
-        return self.__class__.__name__
-
-    def reset(self, verbose: bool = False) -> None:
-        """ Resets the internal state of the player. """
-        pass
-
-    def get_move(self, board: Board) -> int:
-        """ Returns the best move for the player given the current board state. """
-        pass
-
-    def apply_move(self, move: int, player: int = None) -> None:
-        """ Updates the internal state of the player after a move is played. """
-        pass
-
-
 class HumanPlayer(Player):
+    """
+    Player asking the user to choose the move to play.
+    """
 
     def __init__(self) -> None:
         super().__init__()
@@ -49,10 +31,10 @@ class HumanPlayer(Player):
                 return None
             return (int(row), int(col))
     
-    def get_move(self, board: Board) -> int:
+    def get_move(self, board: Board) -> tuple[int,int]:
 
         move = None
-        while move is None:
+        while move is None: # UI loop
             
             move_input = input("Enter your move: ")
 
@@ -71,12 +53,15 @@ class HumanPlayer(Player):
 
 
 class RandomPlayer(Player):
+    """
+    Player selecting a random legal move at each turn.
+    """
 
     def __init__(self, lock_time: float = None) -> None:
         super().__init__()
         self.lock_time = lock_time # in seconds
     
-    def get_move(self, board: Board) -> int:
+    def get_move(self, board: Board) -> tuple[int,int]:
         if self.lock_time is not None: # for display purposes for example
             sleep(self.lock_time)
         return board.get_random_move()
@@ -86,8 +71,7 @@ class MCTSPlayer(Player):
     """
     Player using Monte Carlo Tree Search to select the best move.
     MCTSPlayer doesn't have an internal representation of the board as an attribute.
-    But it needs to always have its root node corresponding to the current state of the board.
-    MCTSPlayer always assumes that it plays as player with id 1 but the board might be reversed.
+    But it needs to always have its root node synchronized to the current state of the board.
     """
 
     def __init__(self, n_sim: int = None, compute_time: float = None) -> None:
@@ -103,15 +87,17 @@ class MCTSPlayer(Player):
     def reset(self, verbose: bool = False) -> None:
         self.mct = MCT()
     
-    def apply_move(self, move: int, player: int = None) -> None:
+    def apply_move(self, move, player: int = None) -> None:
         """ Maintain the root node synchronized with the current state of the board. """
         self.mct.change_root(move)
     
-    def get_move(self, board: Board) -> int:
+    def get_move(self, board: Board) -> tuple[int,int]:
         """ 
-        MCTSPlayer always assumes that it plays as player with id 1 but the board might be reversed. 
-        So, it is required to adapt the board to the player's perspective using self.player to check the id of MCTSPlayer.
+        Perform MCTS as long as the constraint (n_sim or compute_time) is not reached then select and return the best action.
         """
+
+        if board.is_game_over():
+            raise ValueError("MCTSPlayer.get_move was called with a board in game over state...")
 
         # perform MCTS
         self.mct.search(
@@ -125,15 +111,13 @@ class MCTSPlayer(Player):
             n_rollouts, simulation_time = self.mct.get_stats()
             print(f"MCTSPlayer current score = {board.get_score()} | Number of rollouts = {n_rollouts} | time = {simulation_time:6f}")
 
-        best_action = self.mct.get_best_action(board)
+        # select best action
+        best_action = self.mct.get_best_action(board) # (row, col) for Othello for example
 
-        return best_action # best_action = (row, col)
+        return best_action
 
 
 def main():
-
-    _ = Player()
-    print("Player created successfully!")
 
     _ = HumanPlayer()
     print("HumanPlayer created successfully!")
