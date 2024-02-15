@@ -98,6 +98,10 @@ class Player():
         """ Returns the best move for the player given the current board state. """
         raise NotImplementedError
 
+    def get_stats_after_move(self) -> dict[str, int|float]:
+        """ Returns the statistics of the player's last move. """
+        return {}
+
 
 def main():
     

@@ -65,8 +65,12 @@ class Arena():
             self.board.play_move(move)
 
             # logs and/or displays
-            # if verbose:
-            #     print(f"Player {player_idx+1} plays move {move}")
+            if verbose:
+                dict_stats = players[player_idx].get_stats_after_move()
+                msg = f"{players[player_idx]} played {move} | score = {-self.board.get_score()} | "
+                for k, v in dict_stats.items():
+                    msg += f"{k} = {v:.3f} | " if type(v) == float else f"{k} = {v} | "
+                print(msg[:-3])
             if display:
                 self.board.display(indexes=True)
 

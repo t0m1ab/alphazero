@@ -35,7 +35,7 @@ class HumanPlayer(Player):
         move = None
         while move is None: # UI loop
             
-            move_input = input("Enter your move: ")
+            move_input = input("\nEnter your move: ")
 
             if len(move_input) == 0: # pass
                 move = board.pass_move
@@ -120,14 +120,14 @@ class MCTSPlayer(Player):
             compute_time=self.compute_time
         )
 
-        if self.verbose:
-            n_rollouts, simulation_time = self.mct.get_stats()
-            print(f"MCTSPlayer current score = {board.get_score()} | Number of rollouts = {n_rollouts} | time = {simulation_time:6f}")
-
         # select best action
         best_action = self.mct.get_best_action(board) # (row, col) for Othello for example
 
         return best_action
+    
+    def get_stats_after_move(self) -> dict[str, int|float]:
+        n_rollouts, simulation_time = self.mct.get_stats()
+        return {"n_rollouts": n_rollouts, "time": simulation_time}
 
 
 def main():
