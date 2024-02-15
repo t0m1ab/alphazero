@@ -1,40 +1,25 @@
 from tqdm import tqdm
 
-from alphazero.players import Player, HumanPlayer, RandomPlayer, MCTSPlayer
+from alphazero.players import HumanPlayer, RandomPlayer, MCTSPlayer
 from alphazero.arena import Arena
+from alphazero.games.othello import OthelloBoard
 
 
-def contest_1(n_rounds: int = 2):
+def contest_MCTS_Random(n_rounds: int = 2, n_process: int = None, verbose: bool = False):
+    """ Organize a contest between MCTSPlayer and RandomPlayer. """
 
-    # store final score of each game for the winner and the number of draws
-    stats = {
-        "player1": [],
-        "player2": [],
-        "draw": 0,
-    }
+    player1 = MCTSPlayer(compute_time=0.5, verbose=False)
+    player2 = RandomPlayer()
+    board = OthelloBoard(8)
 
-    for round_idx in tqdm(range(n_rounds)):
+    arena = Arena(player1, player2, board)
 
-        player1 = MCTSPlayer(compute_time=0.5)
-        player2 = RandomPlayer()
+    # stats = arena.play_games(n_rounds, verbose=verbose, return_stats=True)
+    stats = arena.play_games_in_parallel(n_rounds, verbose=verbose, return_stats=True, n_process=n_process)
 
-        arena = Arena(player1, player2, game="othello", n=8, display_dir=None)
-
-        p2s = bool(round_idx%2)
-        results = arena.play_game(player2_starts=p2s, return_results=True)
-
-        if results["winner"] == 0:
-            stats["draw"] += 1
-        else:
-            stats[f"player{results['winner']}"].append(results["score"])
-    
-        print(f"{player1} wins: {len(stats['player1'])}")
-        print(f"{player2} wins: {len(stats['player2'])}")
-        print(f"Draws: {stats['draw']}")
-        print()
-        print(f"{player1} scores = {stats['player1']}")
-        print(f"{player2} scores = {stats['player2']}")
+    print(stats)
 
 
 if __name__ == "__main__":
-    contest_1(10)
+
+    contest_MCTS_Random(n_rounds=10, n_process=None)

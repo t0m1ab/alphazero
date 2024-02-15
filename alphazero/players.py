@@ -61,6 +61,10 @@ class RandomPlayer(Player):
         super().__init__()
         self.lock_time = lock_time # in seconds
     
+    def clone(self, verbose: bool = None) -> "RandomPlayer":
+        """ Returns a deep copy of the player. """
+        return RandomPlayer(lock_time=self.lock_time)
+    
     def get_move(self, board: Board) -> tuple[int,int]:
         if self.lock_time is not None: # for display purposes for example
             sleep(self.lock_time)
@@ -74,7 +78,7 @@ class MCTSPlayer(Player):
     But it needs to always have its root node synchronized to the current state of the board.
     """
 
-    def __init__(self, n_sim: int = None, compute_time: float = None) -> None:
+    def __init__(self, n_sim: int = None, compute_time: float = None, verbose: bool = False) -> None:
         super().__init__()
         self.n_sim = n_sim
         self.compute_time = compute_time
@@ -83,6 +87,15 @@ class MCTSPlayer(Player):
         if self.n_sim is not None and self.compute_time is not None:
             raise ValueError("MCTSPlayer can't have both n_sim and compute_time specified.")
         self.mct = MCT()
+        self.verbose = verbose
+    
+    def clone(self, verbose: bool = None) -> "MCTSPlayer":
+        """ Returns a deep copy of the player. """
+        return MCTSPlayer(
+            n_sim=self.n_sim, 
+            compute_time=self.compute_time, 
+            verbose=self.verbose if verbose is None else verbose,
+        )
 
     def reset(self, verbose: bool = False) -> None:
         self.mct = MCT()
@@ -106,8 +119,7 @@ class MCTSPlayer(Player):
             compute_time=self.compute_time
         )
 
-        verbose = True
-        if verbose:
+        if self.verbose:
             n_rollouts, simulation_time = self.mct.get_stats()
             print(f"MCTSPlayer current score = {board.get_score()} | Number of rollouts = {n_rollouts} | time = {simulation_time:6f}")
 

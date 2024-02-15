@@ -18,6 +18,7 @@ class Board():
         self.cells = None
         self.player = None
         self.pass_move = None # must remain None if the game doesn't allow to pass
+        self.game_name = None
     
     def reset(self) -> None:
         """ Resets the board to the initial state. """
@@ -80,6 +81,10 @@ class Player():
 
     def __str__(self) -> str:
         return self.__class__.__name__
+    
+    def clone(self, *args, **kwargs) -> "Player":
+        """ Returns a deep copy of the player. """
+        raise NotImplementedError
 
     def reset(self, verbose: bool = False) -> None:
         """ Resets the internal state of the player. """

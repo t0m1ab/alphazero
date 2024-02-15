@@ -29,11 +29,11 @@ class OthelloBoard(Board):
 
         if n % 2 != 0:
             raise ValueError("Board size must be even")
-
         self.n = n
         self.cells = board if board is not None else self.__get_init_board()
         self.player = player
         self.pass_move = (self.n, self.n) # pass is allowed in Othello only when a player has no legal move
+        self.game_name = "othello"
     
     def __get_init_board(self) -> np.ndarray:
         """ Returns the initial board state as a 2D np.ndarray representing the content of each cell. """  
