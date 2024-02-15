@@ -3,6 +3,7 @@ from time import sleep
 
 from alphazero.base import Board, Player
 from alphazero.mcts import MCT
+from alphazero.utils import fair_max
 
 
 class HumanPlayer(Player):
@@ -71,6 +72,34 @@ class RandomPlayer(Player):
         if self.lock_time is not None: # for display purposes for example
             sleep(self.lock_time)
         return board.get_random_move()
+    
+
+class GreedyPlayer(Player):
+    """
+    Player selecting the move that maximizes its score at each turn.
+    """
+
+    def __init__(self, verbose: bool = False) -> None:
+        super().__init__(verbose=verbose)
+    
+    def clone(self) -> "RandomPlayer":
+        """ Returns a deep copy of the player. """
+        return GreedyPlayer(
+            verbose=self.verbose,
+        )
+    
+    def get_move(self, board: Board) -> tuple[int,int]:
+        """ Returns the move that maximizes the score of the board for the current player. """
+
+        moves = board.get_moves()
+
+        move2score = {}
+        for move in moves:
+            cloned_board = board.clone()
+            cloned_board.play_move(move)
+            move2score[move] = -cloned_board.get_score() # the score returned is from the viewpoint of the other player
+        
+        return fair_max(move2score.items(), key=lambda x: x[1])[0]
 
 
 class MCTSPlayer(Player):

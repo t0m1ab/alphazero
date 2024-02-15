@@ -1,5 +1,5 @@
 from alphazero.base import Board, Player
-from alphazero.players import HumanPlayer, RandomPlayer, MCTSPlayer
+from alphazero.players import HumanPlayer, RandomPlayer, GreedyPlayer, MCTSPlayer
 from alphazero.arena import Arena
 from alphazero.games.othello import OthelloBoard
 
