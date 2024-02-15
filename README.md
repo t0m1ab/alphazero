@@ -17,6 +17,12 @@ mv alphazero/
 pip install -e .
 ``` 
 
+* You should be able to run tests on the package or print the docs with the following commands in the terminal: 
+```bash
+alphazero --test
+alphazero --help
+``` 
+
 ## 1 - Files
 
 * `base`: implement parent classes such as *Board* (and TODO *PolicyNet*)

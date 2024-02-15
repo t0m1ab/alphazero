@@ -125,7 +125,7 @@ def main():
     _ = RandomPlayer()
     print("RandomPlayer created successfully!")
 
-    _ = MCTSPlayer()
+    _ = MCTSPlayer(n_sim=42)
     print("MCTSPlayer created successfully!")
 
 
