@@ -3,8 +3,11 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-from alphazero.base import Board
+from alphazero.base import Action, Board, PolicyValueNetwork
 
 
 class OthelloBoard(Board):
@@ -15,7 +18,7 @@ class OthelloBoard(Board):
     """
 
     DIRECTIONS = [(1,1), (1,0), (1,-1), (0,-1), (-1,-1), (-1,0), (-1,1), (0,1)]
-
+    
     COLORS = {-1: "white", 0: "green", 1: "black"}
 
     def __init__(
@@ -32,7 +35,7 @@ class OthelloBoard(Board):
         self.n = n
         self.cells = board if board is not None else self.__get_init_board()
         self.player = player
-        self.pass_move = (self.n, self.n) # pass is allowed in Othello only when a player has no legal move
+        self.pass_move = self.get_board_shape() # pass is allowed in Othello only when a player has no legal move
         self.game_name = "othello"
     
     def __get_init_board(self) -> np.ndarray:
@@ -58,8 +61,11 @@ class OthelloBoard(Board):
             display_dir=self.display_dir,
         )
     
-    def get_board_size(self) -> tuple[int, int]:
+    def get_board_shape(self) -> tuple[int, int]:
         return (self.n, self.n)
+    
+    def get_n_cells(self) -> int:
+        return self.n * self.n
     
     def get_action_size(self) -> int:
         """ Returns the number of possible moves in the game = number of cells + 1 (to pass)."""
@@ -87,7 +93,7 @@ class OthelloBoard(Board):
             c = (c[0] + dir[0], c[1] + dir[1])
         return []
     
-    def is_legal_move(self, move: tuple[int, int], player: int = None) -> bool:
+    def is_legal_move(self, move: Action, player: int = None) -> bool:
         """ Returns True if the move is legal, False otherwise (considering that it is a move for player <player>). """
         
         if move == self.pass_move: # must check all free positions to see if the player can pass
@@ -108,7 +114,7 @@ class OthelloBoard(Board):
             
         return False
     
-    def get_moves(self, player: int = None) -> list[tuple[int, int]]:
+    def get_moves(self, player: int = None) -> list[Action]:
         """ 
         Returns all possible moves for player <player> which is self.player is <player> is None. 
         If no move is available, returns [self.pass_move].
@@ -123,12 +129,12 @@ class OthelloBoard(Board):
             moves.add(self.pass_move)
         return list(moves)
     
-    def get_random_move(self, player: int = None) -> tuple[int, int]:
+    def get_random_move(self, player: int = None) -> Action:
         """ Returns a random move for player <player>. If no move is available, returns (self.n, self.n) to pass."""
         available_moves = self.get_moves(player)
         return available_moves[np.random.choice(len(available_moves))]
       
-    def play_move(self, move: tuple[int, int]) -> None:
+    def play_move(self, move: Action) -> None:
         """ Plays the move on the board. """
         
         if not self.is_legal_move(move):
@@ -207,6 +213,97 @@ class OthelloBoard(Board):
         plt.close()
 
 
+class OthelloNet(nn.Module, PolicyValueNetwork):
+    """
+    Policy-Value network to play Othello using AlphaZero algorithm.
+    The network evaluates the state of the board from the viewpoint of the player with id 1 and outputs a value v in [-1,1]
+    representing the probability of player with id 1 to win the game from the current state.
+    The network also outputs a policy p representing the probability distribution of the next move to play.
+    """
+
+    def __init__(self, n: int, *args, **kwargs):
+
+        super().__init__()
+        self.board_dim = n
+        self.action_size = self.board_dim * self.board_dim + 1
+        self.n_channels = 32
+        self.dropout = 0.3
+        self.args = args
+        self.kwargs = kwargs
+
+        self.conv1 = nn.Conv2d(1, self.n_channels, 3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1)
+        self.conv4 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1)
+
+        self.bn1 = nn.BatchNorm2d(self.n_channels)
+        self.bn2 = nn.BatchNorm2d(self.n_channels)
+        self.bn3 = nn.BatchNorm2d(self.n_channels)
+        self.bn4 = nn.BatchNorm2d(self.n_channels)
+
+        self.fc1_input_size = self.n_channels * (self.board_dim-4) * (self.board_dim-4)
+        self.fc1 = nn.Linear(self.fc1_input_size, 1024)
+        self.fc_bn1 = nn.BatchNorm1d(1024)
+
+        self.fc2 = nn.Linear(1024, 512)
+        self.fc_bn2 = nn.BatchNorm1d(512)
+
+        self.fc_probs = nn.Linear(512, self.action_size)
+        self.fc_value = nn.Linear(512, 1)
+
+    def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
+        """ Forward through the network and outputs (logits of probabilitites, value). """
+        # x: batch_size x board_x x board_y
+        x = input.view(-1, 1, self.board_dim, self.board_dim) # batch_size x 1 x board_dim x board_dim
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = x.view(-1, self.fc1_input_size)
+
+        x = F.dropout(F.relu(self.fc_bn1(self.fc1(x))), p=self.dropout, training=self.training) # batch_size x 1024
+        x = F.dropout(F.relu(self.fc_bn2(self.fc2(x))), p=self.dropout, training=self.training) # batch_size x 512
+
+        probs = self.fc_probs(x) # batch_size x action_size
+        value = self.fc_value(x) # batch_size x 1
+
+        return F.log_softmax(probs, dim=1), torch.tanh(value)
+    
+    def predict(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
+        """ Returns a policy and a value from the input state. """
+        self.eval()
+        with torch.no_grad():
+            log_probs, v =  self.forward(input)
+        return torch.exp(log_probs), v
+
+    def evaluate(self, board: Board) -> tuple[np.ndarray, float]:
+        """ 
+        Evaluation of the state of the cloned board from the viewpoint of the player that needs to play. 
+        A PolicyValueNetwork always evaluates the board from the viewpoint of player with id 1.
+        Therefore, the board should be switched if necessary.
+        """
+        input = torch.tensor(board.player * board.cells, dtype=torch.float)
+        torch_probs, torch_v = self.predict(input)
+        probs = torch_probs.numpy().reshape(-1)
+        return probs, torch_v.item()
+    
+    def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:
+        """ Returns the normalized probabilities over the legal moves. """
+        sum_legal_probs = 0
+        for move in legal_moves: # needs to make the difference between the pass move and the other moves
+            sum_legal_probs += probs[move[0] * self.n + move[1]] if move != (self.n, self.n) else probs[-1]
+
+        if sum_legal_probs < 1e-6: # set uniform probabilities if the sum is too close to 0
+            print(f"The sum of the probabilities of the {len(legal_moves)} legal moves is {sum_legal_probs}")
+            return {move: 1/len(legal_moves) for move in legal_moves}
+
+        normalized_probs = {}
+        for move, prob in legal_moves:
+            normalized_probs[move] = prob / sum_legal_probs
+
+        return normalized_probs
+
+
 def random_play(n: int = 8, n_turns: int = 100, display_dir: str = None) -> None:
     """ Generate a random game of Othello and display the board at the end. """
 
@@ -234,8 +331,10 @@ def main():
     
     _ = OthelloBoard(n=8)
     print("OthelloBoard created successfully!")
-    # random_play()
 
+    _ = OthelloNet(n=8)
+    print("OthelloNet created successfully!")
+    
 
 if __name__ == "__main__":
     main()

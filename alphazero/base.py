@@ -1,6 +1,16 @@
 import os
+from abc import abstractmethod
+import numpy as np
+import torch
 
 import alphazero
+
+
+class Action():
+    """
+    Used for type indications. Usually a tuple of integers representing a move on the board of a game.
+    """
+    pass
 
 
 class Board():
@@ -20,50 +30,70 @@ class Board():
         self.pass_move = None # must remain None if the game doesn't allow to pass
         self.game_name = None
     
+    def __str__(self) -> str:
+        return self.__class__.__name__
+    
+    @abstractmethod
     def reset(self) -> None:
         """ Resets the board to the initial state. """
         raise NotImplementedError
     
+    @abstractmethod
     def clone(self) -> "Board":
         """ Returns a deep copy of the board. """
         raise NotImplementedError
     
-    def get_board_size(self) -> tuple[int, int]:
+    @abstractmethod
+    def get_board_shape(self) -> tuple[int, int]:
         """ Returns the size of the board. """
         raise NotImplementedError
+    
+    @abstractmethod
+    def get_n_cells(self) -> int:
+        """ Returns the number of cells in the board. """
+        return NotImplementedError
 
+    @abstractmethod
     def get_action_size(self) -> int:
         """ Returns the number of possible moves in the game. """
         raise NotImplementedError
     
+    @abstractmethod
     def get_score(self) -> int | float:
         """ Returns the current score of the board from the viewpoint of self.player. """
         raise NotImplementedError
     
+    @abstractmethod
     def is_legal_move(self, move, player) -> bool:
         """ Returns True if the move is legal, False otherwise (considering that it is a move for player <player>). """
         raise NotImplementedError
     
-    def get_moves(self, player) -> list[tuple[int, int]]:
+    @abstractmethod
+    def get_moves(self, player) -> list[Action]:
         """ Returns the list of legal moves for the player <player> in the current state of the board. """
         raise NotImplementedError
     
-    def get_random_move(self, player) -> tuple[int, int]:
+    @abstractmethod
+    def get_random_move(self, player) -> Action:
         """ Returns a random legal move for the player <player> in the current state of the board. """
         raise NotImplementedError
     
+    @abstractmethod
     def play_move(self, move) -> None:
         """ Plays the move on the board (self.player is playing this move). """
         raise NotImplementedError
     
+    @abstractmethod
     def is_game_over(self) -> bool:
         """ Returns True if the game is over, False otherwise. """
         raise NotImplementedError
     
+    @abstractmethod
     def get_winner(self) -> int:
         """ Returns the id of the winner of the game (1 or -1) or 0 if the game is a draw."""
         raise NotImplementedError
     
+    @abstractmethod
     def display(self, *args, **kwargs):
         """ Display the current state of the board. """
         raise NotImplementedError
@@ -82,6 +112,7 @@ class Player():
     def __str__(self) -> str:
         return self.__class__.__name__
     
+    @abstractmethod
     def clone(self) -> "Player":
         """ Returns a deep copy of the player. """
         raise NotImplementedError
@@ -94,13 +125,49 @@ class Player():
         """ Updates the internal state of the player after a move is played. """
         pass
 
-    def get_move(self, board: Board) -> tuple[int, int] | None:
+    @abstractmethod
+    def get_move(self, board: Board, temp: float = None) -> Action | None:
         """ Returns the best move for the player given the current board state. """
         raise NotImplementedError
 
     def get_stats_after_move(self) -> dict[str, int|float]:
         """ Returns the statistics of the player's last move. """
         return {}
+
+
+class PolicyValueNetwork():
+    """
+    Base class to encode the logic of a policy-value network used in by AlphaZero type of players
+    """
+    def __init__(self):
+        pass
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    @abstractmethod
+    def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
+        """ Forward through the network and outputs (logits of probabilitites, value). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
+        """ Returns the policy and value of the input state. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def evaluate(self, board: Board) -> tuple[np.ndarray, float]:
+        """ 
+        Evaluation of the state of the cloned board from the viewpoint of the player that needs to play. 
+        A PolicyValueNetwork always evaluates the board from the viewpoint of player with id 1.
+        Therefore, the board should be switched if necessary.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:
+        """ Returns the normalized probabilities over the legal moves. """
+        raise NotImplementedError
 
 
 def main():
@@ -110,6 +177,9 @@ def main():
 
     _ = Player()
     print("Player created successfully!")
+
+    _ = PolicyValueNetwork()
+    print("PolicyValueNetwork created successfully!")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import numpy as np
 from time import sleep
 
-from alphazero.base import Board, Player
+from alphazero.base import Action, Board, Player, PolicyValueNetwork
 from alphazero.mcts import MCT
 from alphazero.utils import fair_max
 
@@ -31,7 +31,7 @@ class HumanPlayer(Player):
                 return None
             return (int(row), int(col))
     
-    def get_move(self, board: Board) -> tuple[int,int]:
+    def get_move(self, board: Board, temp: float = None) -> Action:
 
         move = None
         while move is None: # UI loop
@@ -68,7 +68,7 @@ class RandomPlayer(Player):
             verbose=self.verbose,
         )
     
-    def get_move(self, board: Board) -> tuple[int,int]:
+    def get_move(self, board: Board, temp: float = None) -> Action:
         if self.lock_time is not None: # for display purposes for example
             sleep(self.lock_time)
         return board.get_random_move()
@@ -88,7 +88,7 @@ class GreedyPlayer(Player):
             verbose=self.verbose,
         )
     
-    def get_move(self, board: Board) -> tuple[int,int]:
+    def get_move(self, board: Board, temp: float = None) -> Action:
         """ Returns the move that maximizes the score of the board for the current player. """
 
         moves = board.get_moves()
@@ -130,13 +130,14 @@ class MCTSPlayer(Player):
     def reset(self) -> None:
         self.mct = MCT()
     
-    def apply_move(self, move, player: int = None) -> None:
+    def apply_move(self, move: Action, player: int = None) -> None:
         """ Maintain the root node synchronized with the current state of the board. """
         self.mct.change_root(move)
     
-    def get_move(self, board: Board) -> tuple[int,int]:
+    def get_move(self, board: Board, temp: float = 0) -> Action:
         """ 
         Perform MCTS as long as the constraint (n_sim or compute_time) is not reached then select and return the best action.
+        temp is the temperature parameter controlling the level of exploration of the MCTS (acts over the action probs)
         """
 
         if board.is_game_over():
@@ -150,13 +151,47 @@ class MCTSPlayer(Player):
         )
 
         # select best action
-        best_action = self.mct.get_best_action(board) # (row, col) for Othello for example
-
-        return best_action
+        action_probs = self.mct.get_action_probs(board, temp)
+        items = list(action_probs.items())
+        if len(items) == 1: # only one action (if temp=0 for example)
+            return items[0][0]
+        else: # need to sample an action according to the action probs
+            best_action = items[np.random.choice(len(items), p=[prob for (_, prob) in items])][0]
+            return best_action
     
     def get_stats_after_move(self) -> dict[str, int|float]:
         n_rollouts, simulation_time = self.mct.get_stats()
         return {"n_rollouts": n_rollouts, "time": simulation_time}
+
+
+class AlphaZeroPlayer(Player):
+    """
+    Player using MCTS with state evaluation done by a neural network to select the best move.
+    """
+
+    def __init__(
+            self, 
+            n_sim: int = None, 
+            compute_time: float = None, 
+            nn: PolicyValueNetwork = None,
+            verbose: bool = False,
+        ) -> None:
+        super().__init__(verbose=verbose)
+        self.n_sim = n_sim
+        self.compute_time = compute_time
+        self.mct = MCT(eval_method="nn", nn=nn) # nn maybe init to None but loaded/assigned later
+    
+    def clone(self) -> "AlphaZeroPlayer":
+        """ Returns a deep copy of the player. """
+        return AlphaZeroPlayer(
+            n_sim=self.n_sim, 
+            compute_time=self.compute_time, 
+            nn=self.mct.nn,
+            verbose=self.verbose,
+        )
+    
+    def reset(self) -> None:
+        self.mct = MCT(eval_method="nn", nn=self.mct.nn)
 
 
 def main():
@@ -169,6 +204,9 @@ def main():
 
     _ = MCTSPlayer(n_sim=42)
     print("MCTSPlayer created successfully!")
+
+    _ = AlphaZeroPlayer(compute_time=0.2)
+    print("AlphaZeroPlayer created successfully!")
 
 
 if __name__ == "__main__":
