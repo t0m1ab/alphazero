@@ -133,7 +133,7 @@ class Arena():
                 p2s = bool(round_idx%2)
 
             # play the game
-            results = self.play_game(player2_starts=p2s, return_results=True)
+            results = self.play_game(player2_starts=p2s, return_results=True, verbose=verbose)
 
             # store the results
             if results["winner"] == 0:
