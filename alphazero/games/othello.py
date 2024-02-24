@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from aenum import Enum, NoAlias
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -307,6 +308,25 @@ class OthelloNet(nn.Module, PolicyValueNetwork):
         norm_probs = {move: prob/sum_legal_probs for move, prob in legal_probs.items()}
 
         return norm_probs
+
+
+class OthelloConfig(Enum):
+    """ Configuration for AlphaOthelloZero training. """
+    _settings_ = NoAlias # avoid grouping items with same values
+    # GAME settings
+    BOARD_SIZE = 6
+    # MCTS settings
+    SIMULATIONS = 100
+    # NN settings
+    EPOCHS = 5
+    BATCH_SIZE = 64
+    LEARNING_RATE = 0.001
+    EPISODES = 3
+    DEVICE = "cpu"
+
+    @classmethod
+    def to_dict(cls) -> dict[str, float | int | str]:
+        return {x.name.lower(): x.value for x in cls}
 
 
 def random_play(n: int = 8, n_turns: int = 100, display_dir: str = None) -> None:
