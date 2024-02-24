@@ -150,6 +150,21 @@ class MCT():
 
         return cloned_board.get_winner()
     
+    def nn_evaluation(self, cloned_board: Board, node: Node) -> tuple[dict[Action, float], int]:
+        """ Perform ROLLOUT through nn evaluation from the current state of the board and returns the id of the winner. """
+
+        if cloned_board.is_game_over():
+            return cloned_board.get_winner()
+        
+        # evaluation of the state of the cloned board from the viewpoint of the player that needs to play
+        probs, outcome = self._nn.evaluate(cloned_board) # v in [-1,1]
+        if node._children_probs is None: # store the raw prior probs of the children of the node
+            node._children_probs = probs
+        else:
+            raise ValueError("The children probs of the node are not empty... This should not happen.")
+        
+        return outcome
+    
     def back_propagate(self, node: Node, player_id: int, outcome: int) -> None:
         """ Perform the BACKPROPAGATION step: update the statistics of the nodes on the path from the selected node to the root. """
 
@@ -164,7 +179,7 @@ class MCT():
             # that means that node.Q must be penalized (-1) when player_id is the winner
             reward = 0 if player_id == outcome else 1
         elif self.eval_method == "nn":
-            raise ValueError("The back_propagate method is not implemented for the evaluation method 'nn'...")
+            reward = -1 if player_id == outcome else 1
         
         while node is not None:
             node.Q += (node.N * node.Q + reward) / (node.N + 1) # update Q (expected reward of the transition that led to the node)
@@ -175,8 +190,7 @@ class MCT():
             elif self.eval_method == "rollout":
                 reward = 1 - reward # alterate the increment of the win count (between 0 and 1) as we go up in the tree
             elif self.eval_method == "nn":
-                # reward = -reward
-                raise ValueError("The back_propagate method is not implemented for the evaluation method 'nn'...")
+                reward = -reward
     
     def __search_iter(self, cloned_board: Board) -> None:
         """ A single iteration of the search loop. """
@@ -192,12 +206,7 @@ class MCT():
         if self.eval_method == "rollout":
             outcome = self.rollout(cloned_board) # player id of the winner (0 if it's a draw)
         elif self.eval_method == "nn":
-            # evaluation of the state of the cloned board from the viewpoint of the player that needs to play
-            probs, outcome = self._nn.evaluate(cloned_board) # v in [-1,1]
-            if node._children_probs is None:
-                node._children_probs = probs
-            else:
-                raise ValueError("The children probs of the node are not empty... This should not happen.")
+            outcome = self.nn_evaluation(cloned_board, node) # player id of the winner (0 if it's a draw)
 
         self.back_propagate(node, player_to_play, outcome)
 

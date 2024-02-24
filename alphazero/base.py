@@ -2,6 +2,7 @@ import os
 from abc import abstractmethod
 import numpy as np
 import torch
+from copy import deepcopy
 
 import alphazero
 
@@ -139,11 +140,29 @@ class PolicyValueNetwork():
     """
     Base class to encode the logic of a policy-value network used in by AlphaZero type of players
     """
+
     def __init__(self):
         pass
 
     def __str__(self) -> str:
         return self.__class__.__name__
+    
+    def clone(self) -> "PolicyValueNetwork":
+        """ Returns a deep copy of the network. """
+        return deepcopy(self)
+
+    @staticmethod
+    def get_torch_device(device: str) -> torch.device:
+        """ Returns torch.device if the requested device is available. If device is None, returns "cpu" by default. """
+        
+        if device is None:
+            device = "cpu"
+        elif device == "mps" and not torch.backends.mps.is_available():
+            raise ValueError("MPS not available...")
+        elif device == "cuda" and not torch.cuda.is_available():
+            raise ValueError("CUDA not available...")
+
+        return torch.device(device)
 
     @abstractmethod
     def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:

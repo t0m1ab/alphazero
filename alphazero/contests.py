@@ -45,26 +45,26 @@ def MCTS_vs_Greedy(n_rounds: int = 2, n_process: int = None, verbose: bool = Fal
     show_results(player1, player2, stats)
 
 
-def AZ_vs_Random(n_rounds: int = 2, n_process: int = None, verbose: bool = False):
+def AZ_vs_Greedy(n_rounds: int = 2, n_process: int = None, verbose: bool = False):
     """ Organize a contest between AlphaZeroPlayer and RandomPlayer. """
 
     board_dim = 6
 
-    nn = OthelloNet(n=board_dim)
+    nn = OthelloNet(n=board_dim, device="cpu") # cuda or mps device will not work for parallel games
     player1 = AlphaZeroPlayer(compute_time=0.2, nn=nn, verbose=verbose)
-    player2 = RandomPlayer()
+    player2 = GreedyPlayer()
     board = OthelloBoard(n=board_dim)
 
     arena = Arena(player1, player2, board)
 
-    stats = arena.play_games(n_rounds, return_stats=True, verbose=verbose) # sequential
-    # stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=verbose, return_stats=True) # parallel
+    # stats = arena.play_games(n_rounds, return_stats=True, verbose=verbose) # sequential
+    stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=verbose, return_stats=True) # parallel
 
     show_results(player1, player2, stats)
 
 
 if __name__ == "__main__":
     # MCTS_vs_Random(n_rounds=50, n_process=10, verbose=False)
-    MCTS_vs_Greedy(n_rounds=50, n_process=10, verbose=False)
-    # AZ_vs_Random(n_rounds=1, n_process=1, verbose=True)
+    # MCTS_vs_Greedy(n_rounds=50, n_process=10, verbose=False)
+    AZ_vs_Greedy(n_rounds=50, n_process=10, verbose=False)
 

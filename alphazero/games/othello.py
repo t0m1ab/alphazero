@@ -221,35 +221,36 @@ class OthelloNet(nn.Module, PolicyValueNetwork):
     The network also outputs a policy p representing the probability distribution of the next move to play.
     """
 
-    def __init__(self, n: int, *args, **kwargs):
+    def __init__(self, n: int, device: str = None, *args, **kwargs):
 
         super().__init__()
         self.board_dim = n
         self.action_size = self.board_dim * self.board_dim + 1
         self.n_channels = 32
         self.dropout = 0.3
+        self.device = PolicyValueNetwork.get_torch_device(device)
         self.args = args
         self.kwargs = kwargs
 
-        self.conv1 = nn.Conv2d(1, self.n_channels, 3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, padding=1)
-        self.conv3 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1)
-        self.conv4 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1)
+        self.conv1 = nn.Conv2d(1, self.n_channels, 3, stride=1, padding=1, device=self.device)
+        self.conv2 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, padding=1, device=self.device)
+        self.conv3 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, device=self.device)
+        self.conv4 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, device=self.device)
 
-        self.bn1 = nn.BatchNorm2d(self.n_channels)
-        self.bn2 = nn.BatchNorm2d(self.n_channels)
-        self.bn3 = nn.BatchNorm2d(self.n_channels)
-        self.bn4 = nn.BatchNorm2d(self.n_channels)
+        self.bn1 = nn.BatchNorm2d(self.n_channels, device=self.device)
+        self.bn2 = nn.BatchNorm2d(self.n_channels, device=self.device)
+        self.bn3 = nn.BatchNorm2d(self.n_channels, device=self.device)
+        self.bn4 = nn.BatchNorm2d(self.n_channels, device=self.device)
 
         self.fc1_input_size = self.n_channels * (self.board_dim-4) * (self.board_dim-4)
-        self.fc1 = nn.Linear(self.fc1_input_size, 1024)
-        self.fc_bn1 = nn.BatchNorm1d(1024)
+        self.fc1 = nn.Linear(self.fc1_input_size, 1024, device=self.device)
+        self.fc_bn1 = nn.BatchNorm1d(1024, device=self.device)
 
-        self.fc2 = nn.Linear(1024, 512)
-        self.fc_bn2 = nn.BatchNorm1d(512)
+        self.fc2 = nn.Linear(1024, 512, device=self.device)
+        self.fc_bn2 = nn.BatchNorm1d(512, device=self.device)
 
-        self.fc_probs = nn.Linear(512, self.action_size)
-        self.fc_value = nn.Linear(512, 1)
+        self.fc_probs = nn.Linear(512, self.action_size, device=self.device)
+        self.fc_value = nn.Linear(512, 1, device=self.device)
 
     def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
         """ Forward through the network and outputs (logits of probabilitites, value). """
@@ -282,26 +283,30 @@ class OthelloNet(nn.Module, PolicyValueNetwork):
         A PolicyValueNetwork always evaluates the board from the viewpoint of player with id 1.
         Therefore, the board should be switched if necessary.
         """
-        input = torch.tensor(board.player * board.cells, dtype=torch.float)
+        input = torch.tensor(board.player * board.cells, dtype=torch.float, device=self.device)
         torch_probs, torch_v = self.predict(input)
-        probs = torch_probs.numpy().reshape(-1)
-        return probs, torch_v.item()
+        probs = torch_probs.cpu().numpy().reshape(-1)
+        return probs, torch_v.cpu().item()
     
     def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:
         """ Returns the normalized probabilities over the legal moves. """
+
         sum_legal_probs = 0
-        for move in legal_moves: # needs to make the difference between the pass move and the other moves
-            sum_legal_probs += probs[move[0] * self.n + move[1]] if move != (self.n, self.n) else probs[-1]
+        legal_probs = {}
+        for move in legal_moves:
+            # needs to make the difference between the pass move and the other moves
+            prob = probs[move[0] * self.board_dim + move[1]] if move != (self.board_dim, self.board_dim) else probs[-1]
+            legal_probs[move] = prob
+            sum_legal_probs += prob
 
         if sum_legal_probs < 1e-6: # set uniform probabilities if the sum is too close to 0
             print(f"The sum of the probabilities of the {len(legal_moves)} legal moves is {sum_legal_probs}")
             return {move: 1/len(legal_moves) for move in legal_moves}
 
-        normalized_probs = {}
-        for move, prob in legal_moves:
-            normalized_probs[move] = prob / sum_legal_probs
+        # normalize the probabilities to sum to 1
+        norm_probs = {move: prob/sum_legal_probs for move, prob in legal_probs.items()}
 
-        return normalized_probs
+        return norm_probs
 
 
 def random_play(n: int = 8, n_turns: int = 100, display_dir: str = None) -> None:

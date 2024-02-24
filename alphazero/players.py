@@ -141,7 +141,7 @@ class MCTSPlayer(Player):
         """
 
         if board.is_game_over():
-            raise ValueError("MCTSPlayer.get_move was called with a board in game over state...")
+            raise ValueError(f"{self}.get_move was called with a board in game over state...")
 
         # perform MCTS
         self.mct.search(
@@ -164,7 +164,7 @@ class MCTSPlayer(Player):
         return {"n_rollouts": n_rollouts, "time": simulation_time}
 
 
-class AlphaZeroPlayer(Player):
+class AlphaZeroPlayer(MCTSPlayer):
     """
     Player using MCTS with state evaluation done by a neural network to select the best move.
     """
@@ -176,9 +176,7 @@ class AlphaZeroPlayer(Player):
             nn: PolicyValueNetwork = None,
             verbose: bool = False,
         ) -> None:
-        super().__init__(verbose=verbose)
-        self.n_sim = n_sim
-        self.compute_time = compute_time
+        super().__init__(n_sim=n_sim, compute_time=compute_time, verbose=verbose)
         self.mct = MCT(eval_method="nn", nn=nn) # nn maybe init to None but loaded/assigned later
     
     def clone(self) -> "AlphaZeroPlayer":
@@ -186,7 +184,7 @@ class AlphaZeroPlayer(Player):
         return AlphaZeroPlayer(
             n_sim=self.n_sim, 
             compute_time=self.compute_time, 
-            nn=self.mct.nn,
+            nn=self.mct.nn.clone() if self.mct.nn is not None else None,
             verbose=self.verbose,
         )
     
