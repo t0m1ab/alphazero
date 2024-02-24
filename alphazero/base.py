@@ -1,5 +1,6 @@
 import os
 from abc import abstractmethod
+from enum import Enum
 import numpy as np
 import torch
 from copy import deepcopy
@@ -12,6 +13,16 @@ class Action():
     Used for type indications. Usually a tuple of integers representing a move on the board of a game.
     """
     pass
+
+
+class TreeEval(Enum):
+    """ Enum to indicate the type of evaluation used for MCTS. """
+    ROLLOUT = "rollout"
+    NEURAL = "neural"
+
+    @classmethod
+    def to_dict(cls):
+        return {x.value: x for x in cls}
 
 
 class Board():

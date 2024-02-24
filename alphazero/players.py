@@ -177,7 +177,7 @@ class AlphaZeroPlayer(MCTSPlayer):
             verbose: bool = False,
         ) -> None:
         super().__init__(n_sim=n_sim, compute_time=compute_time, verbose=verbose)
-        self.mct = MCT(eval_method="nn", nn=nn) # nn maybe init to None but loaded/assigned later
+        self.mct = MCT(eval_method="neural", nn=nn) # nn maybe init to None but loaded/assigned later
     
     def clone(self) -> "AlphaZeroPlayer":
         """ Returns a deep copy of the player. """
@@ -189,7 +189,7 @@ class AlphaZeroPlayer(MCTSPlayer):
         )
     
     def reset(self) -> None:
-        self.mct = MCT(eval_method="nn", nn=self.mct.nn)
+        self.mct = MCT(eval_method="neural", nn=self.mct.nn)
 
 
 def main():

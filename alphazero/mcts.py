@@ -2,12 +2,12 @@ import numpy as np
 from time import time
 
 from alphazero.utils import fair_max
-from alphazero.base import Action, Board, PolicyValueNetwork
+from alphazero.base import TreeEval, Action, Board, PolicyValueNetwork
 
 
 class Node:
     """
-    Object which represents a state of the game (= board configuration)
+    Represents a state of the game (= board configuration)
     Each node can be associated with a state of the game (board representation).
     Nodes don't directly contain this information as an attribute. 
     That's why the state of the board must be maintained in parallel during select and rollout.
@@ -19,7 +19,7 @@ class Node:
         self.N = 0 # number of visits of the node from the creation of the tree
         self.Q = 0 # avergage win rate/expected reward of the node (meaning of the action that led to the node)
         self.children = {} # {move1: NodeChild1, move2: NodeChild2, ...}
-        # self.P and self._children_probs are only used when the evaluation method is set to "nn" (AlphaZero)
+        # self.P and self._children_probs are only used when the evaluation method is set to TreeEval.NEURAL (AlphaZero)
         self.P = prob # prior probability of taking the action that led to the node from the parent node (see why prior in PUCT formula)
         self._children_probs = None # array storing the raw probs (obtained from a nn) of all existing actions in the game
     
@@ -42,17 +42,20 @@ class Node:
 
 
 class MCT():
-
-    EVAL_METHODS = ["rollout", "nn"]
-
+    """
+    Monte Carlo Tree of reachable states of the game and the associated statistics of the transitions.
+    The tree is composed of <Node> and expanded following the MCTS algorithm.
+    Two evaluation methods are available: ROLLOUT (classic simulation) and NEURAL (nn evaluation).
+    """
+    
     def __init__(self, eval_method: str = None, nn: PolicyValueNetwork = None) -> None:
         self.root = Node(move=None, parent=None)
         self.n_rollouts = 0
         self.simulation_time = 0
-        self.eval_method = MCT.EVAL_METHODS[0] if eval_method is None else eval_method
+        self.eval_method = TreeEval.to_dict()["rollout" if eval_method is None else eval_method]
         self._nn = nn
-        if self._nn is not None and self.eval_method != "nn":
-            raise ValueError("A neural network has been set for the MCT but the evaluation method is not set to 'nn'...")
+        if self._nn is not None and self.eval_method != TreeEval.NEURAL:
+            raise ValueError(f"A neural network has been set for the MCT but the evaluation method is {self.eval_method}")
 
     @property
     def nn(self):
@@ -62,8 +65,8 @@ class MCT():
     @nn.setter
     def nn(self, nn: PolicyValueNetwork) -> None:
         """ Setter: self._nn """
-        if self.eval_method != "nn":
-            raise ValueError("The evaluation method of the MCT is not set to 'nn'...")
+        if self.eval_method != TreeEval.NEURAL:
+            raise ValueError(f"Trying to set a neural network for the MCT but the evaluation method is {self.eval_method}")
         self._nn = nn
     
     def get_stats(self) -> tuple[int, float]:
@@ -102,12 +105,12 @@ class MCT():
         
         while len(node.children) != 0: # don't modify attributes of node in this loop: only read them
             
-            if self.eval_method == "rollout":
+            if self.eval_method ==TreeEval.ROLLOUT:
                 move, node = fair_max(node.children.items(), key=lambda x: x[1].UCT())
-            elif self.eval_method == "nn":
+            elif self.eval_method == TreeEval.NEURAL:
                 move, node = fair_max(node.children.items(), key=lambda x: x[1].PUCT())
             else:
-                raise ValueError(f"The current evaluation method of the MCT ({self.eval_method}) is invalid...")
+                raise ValueError(f"Unsuported evaluation method: {self.eval_method}")
 
             cloned_board.play_move(move)
 
@@ -120,10 +123,10 @@ class MCT():
         ### At this point of the code, <node> is the selected node that needs to be expanded
         
         # add (ghost) children to the node (their visit count N is 0 so they are not really part of the tree yet)
-        if self.eval_method == "rollout":
+        if self.eval_method == TreeEval.ROLLOUT:
             for move in cloned_board.get_moves():
                 node.add_child(move=move)
-        elif self.eval_method == "nn":
+        elif self.eval_method == TreeEval.NEURAL:
             legal_moves = cloned_board.get_moves()
             # at this level node._children_probs is not None because <node> didn't trigger the condition node.N == 0 before
             norm_children_probs = self._nn.get_normalized_probs(node._children_probs, legal_moves)     
@@ -131,10 +134,10 @@ class MCT():
                 node.add_child(move=move, prob=prob)
         
         # expand the selected node by selecting a move
-        if self.eval_method == "rollout": # select a child randomly
+        if self.eval_method == TreeEval.ROLLOUT: # select a child randomly
             child_moves = list(node.children.keys())
             move = child_moves[np.random.choice(len(child_moves))]
-        elif self.eval_method == "nn": # use PUCT
+        elif self.eval_method == TreeEval.NEURAL: # use PUCT
             move, _ = fair_max(node.children.items(), key=lambda x: x[1].PUCT())
         
         cloned_board.play_move(move)
@@ -172,13 +175,13 @@ class MCT():
 
         if draw:
             reward = 0
-        elif self.eval_method == "rollout":
+        elif self.eval_method == TreeEval.ROLLOUT:
             # node.Q is going to be updated with the reward value at the beginning of the while loop below
             # node.Q is the value of the action that led to node
             # so if the player that needs to play from node is the winner, one must not try to get to node position again
             # that means that node.Q must be penalized (-1) when player_id is the winner
             reward = 0 if player_id == outcome else 1
-        elif self.eval_method == "nn":
+        elif self.eval_method == TreeEval.NEURAL:
             reward = -1 if player_id == outcome else 1
         
         while node is not None:
@@ -187,25 +190,25 @@ class MCT():
             node = node.parent
             if draw:
                 reward = 0
-            elif self.eval_method == "rollout":
+            elif self.eval_method == TreeEval.ROLLOUT:
                 reward = 1 - reward # alterate the increment of the win count (between 0 and 1) as we go up in the tree
-            elif self.eval_method == "nn":
+            elif self.eval_method == TreeEval.NEURAL:
                 reward = -reward
     
     def __search_iter(self, cloned_board: Board) -> None:
         """ A single iteration of the search loop. """
 
         # init the root node with the nn probs if the tree was restarted from an unexplored state
-        if self.eval_method == "nn" and self.root._children_probs is None:
+        if self.eval_method == TreeEval.NEURAL and self.root._children_probs is None:
             probs, _ = self._nn.evaluate(cloned_board)
             self.root._children_probs = probs
         
         node, cloned_board = self.select_node(cloned_board) # cloned board is modified there to reflect the selected node
         player_to_play = cloned_board.player # id of the player that needs to play from the selected node
 
-        if self.eval_method == "rollout":
+        if self.eval_method == TreeEval.ROLLOUT:
             outcome = self.rollout(cloned_board) # player id of the winner (0 if it's a draw)
-        elif self.eval_method == "nn":
+        elif self.eval_method == TreeEval.NEURAL:
             outcome = self.nn_evaluation(cloned_board, node) # player id of the winner (0 if it's a draw)
 
         self.back_propagate(node, player_to_play, outcome)
