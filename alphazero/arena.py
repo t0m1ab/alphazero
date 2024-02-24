@@ -204,6 +204,7 @@ class Arena():
             arenas_stats = [fut.get() for fut in futures]
         
         print(f"Total time = {time() - start_time:.2f} seconds")
+        print("PROOOOOOOOOUT")
 
         # merge stats from all arenas
         stats = {"player1": [], "player2": [], "draw": 0}
