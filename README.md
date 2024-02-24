@@ -25,18 +25,18 @@ alphazero --help
 
 ## 1 - Files
 
-* `base`: implement parent classes such as *Board* (and TODO *PolicyNet*)
+* `base`: implement parent classes such as *Board*, *Player*, *PolicyValueNetwork*...
 * `players.py`: implement different game strategies
 * `mcts.py`: implement Monte Carlo Tree Search
-* `trainers.py`: TODO
+* `trainers.py`: IN PROGRESS...
 * `arena.py`: organize several games between players and compare results
 * `game_ui.py`: interface between user and algorithm to play a game (TODO using gradio)
 * `contests.py`: define specific contests between players
 * `utils.py`: utility functions
-* `tests.py`: contains various test that can be run to check the implementation
+* `tests.py`: contains various tests that can be run to check the implementation
 
 ### games/
-* `othello.py`: implementation of Othello env
+* `othello.py`: implementation of the Othello environment, game config and neural network for AlphaZero
 * `connect4.py`: TODO
 * `tictactoe.py`: TODO
 

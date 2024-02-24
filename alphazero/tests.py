@@ -11,12 +11,14 @@ def test_object_creation():
     from alphazero.players import main as players_main
     from alphazero.games.othello import main as othello_main
     from alphazero.arena import main as arena_main
+    from alphazero.trainers import main as trainers_main
 
     base_main()
     mcts_main()
     players_main()
     othello_main()
     arena_main()
+    trainers_main()
 
     print(f"> Object initialization successfully executed in {time() - start_test:.3f} seconds.")
 
