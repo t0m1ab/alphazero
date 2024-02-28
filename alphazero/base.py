@@ -1,11 +1,12 @@
 import os
 from abc import abstractmethod
-from enum import Enum
+from aenum import Enum, NoAlias
+from copy import deepcopy
 import numpy as np
 import torch
-from copy import deepcopy
 
 import alphazero
+from alphazero.utils import dotdict
 
 
 class Action():
@@ -161,6 +162,10 @@ class PolicyValueNetwork():
     def clone(self) -> "PolicyValueNetwork":
         """ Returns a deep copy of the network. """
         return deepcopy(self)
+    
+    def get_parameters_count(self) -> int:
+        """ Returns the number of parameters of the network. """
+        return sum(p.numel() for p in self.parameters())
 
     @staticmethod
     def get_torch_device(device: str) -> torch.device:
@@ -198,6 +203,16 @@ class PolicyValueNetwork():
     def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:
         """ Returns the normalized probabilities over the legal moves. """
         raise NotImplementedError
+
+
+class Config(Enum):
+    """ Base class to define configuration to train AlphaZero. """
+    _settings_ = NoAlias # avoid grouping items with same values
+
+    @classmethod
+    def to_dict(cls) -> dotdict[str, float | int | str]:
+        """ To access config parameters easily, for example: EPOCHS/Epochs/epochs -> config.epochs """
+        return dotdict({x.name.lower(): x.value for x in cls})
 
 
 def main():

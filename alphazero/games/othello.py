@@ -8,7 +8,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from alphazero.base import Action, Board, PolicyValueNetwork
+from alphazero.base import Action, Board, PolicyValueNetwork, Config
+
+
+class OthelloConfig(Config):
+    """ Configuration for AlphaOthelloZero training. Any config file must define exactly all values listed below. """
+    # GAME settings
+    BOARD_SIZE = 8
+    # PLAYER settings
+    SIMULATIONS = 50 # None to use compute_time
+    COMPUTE_TIME = None # None to use n_sim
+    # TRAINING settings
+    ITERATIONS = 30
+    EPISODES = 100
+    EPOCHS = 10
+    BATCH_SIZE = 64
+    LEARNING_RATE = 0.001
+    DEVICE = "cpu"
 
 
 class OthelloBoard(Board):
@@ -47,6 +63,9 @@ class OthelloBoard(Board):
         cells[self.n//2-1][self.n//2] = -1
         cells[self.n//2][self.n//2-1] = -1
         return cells
+    
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}{self.n}"
     
     def reset(self) -> None:
         """ Resets the board to the initial state. """
@@ -308,48 +327,16 @@ class OthelloNet(nn.Module, PolicyValueNetwork):
         norm_probs = {move: prob/sum_legal_probs for move, prob in legal_probs.items()}
 
         return norm_probs
-
-
-class OthelloConfig(Enum):
-    """ Configuration for AlphaOthelloZero training. """
-    _settings_ = NoAlias # avoid grouping items with same values
-    # GAME settings
-    BOARD_SIZE = 6
-    # MCTS settings
-    SIMULATIONS = 100
-    # NN settings
-    EPOCHS = 5
-    BATCH_SIZE = 64
-    LEARNING_RATE = 0.001
-    EPISODES = 3
-    DEVICE = "cpu"
-
-    @classmethod
-    def to_dict(cls) -> dict[str, float | int | str]:
-        return {x.name.lower(): x.value for x in cls}
-
-
-def random_play(n: int = 8, n_turns: int = 100, display_dir: str = None) -> None:
-    """ Generate a random game of Othello and display the board at the end. """
-
-    board = OthelloBoard(n=n, display_dir=display_dir)
-
-    for turn_i in range(n_turns):
-        player1_random_move = board.get_random_move()
-        board.play_move(player1_random_move)
-        player2_random_move = board.get_random_move()
-        board.play_move(player2_random_move)
-        print(f"#{turn_i} - Player 1 played {player1_random_move} | Player 2 played {player2_random_move}")
-        if player1_random_move == (n,n) and player2_random_move == (n,n):
-            print("> Both players passed, game over!")
-            score = board.get_score()
-            if score == 0:
-                print("> Draw!")
-            else:
-                print(f"> Player {board.get_winner()} won the game with score: {score}")
-            break
     
-    board.display(indexes=True)
+    def to_neural_array(self, move_probs: dict[Action: float]) -> np.ndarray:
+        """ Returns the probabilitites of move_probs in the format given as output by the network. """
+        pi = np.zeros(self.action_size)
+        for move, prob in move_probs.items():
+            if move == (self.board_dim, self.board_dim): # pass move
+                pi[-1] = prob
+            else:
+                pi[move[0] * self.board_dim + move[1]] = prob
+        return pi
 
 
 def main():
