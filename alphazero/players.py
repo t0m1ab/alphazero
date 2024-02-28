@@ -134,7 +134,7 @@ class MCTSPlayer(Player):
         """ Maintain the root node synchronized with the current state of the board. """
         self.mct.change_root(move)
     
-    def get_move(self, board: Board, temp: float = 0) -> Action:
+    def get_move(self, board: Board, temp: float = 0, return_action_probs: bool = False) -> Action:
         """ 
         Perform MCTS as long as the constraint (n_sim or compute_time) is not reached then select and return the best action.
         temp is the temperature parameter controlling the level of exploration of the MCTS (acts over the action probs)
@@ -154,9 +154,13 @@ class MCTSPlayer(Player):
         action_probs = self.mct.get_action_probs(board, temp)
         items = list(action_probs.items())
         if len(items) == 1: # only one action (if temp=0 for example)
-            return items[0][0]
+            best_action = items[0][0]
         else: # need to sample an action according to the action probs
             best_action = items[np.random.choice(len(items), p=[prob for (_, prob) in items])][0]
+        
+        if return_action_probs:
+            return best_action, action_probs
+        else:
             return best_action
     
     def get_stats_after_move(self) -> dict[str, int|float]:

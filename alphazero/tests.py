@@ -12,6 +12,7 @@ def test_object_creation():
     from alphazero.games.othello import main as othello_main
     from alphazero.arena import main as arena_main
     from alphazero.trainers import main as trainers_main
+    from alphazero.timer import main as timer_main
 
     base_main()
     mcts_main()
@@ -19,12 +20,17 @@ def test_object_creation():
     othello_main()
     arena_main()
     trainers_main()
+    timer_main()
 
     print(f"> Object initialization successfully executed in {time() - start_test:.3f} seconds.")
 
 
 def run_tests():
     """ Run all tests for the package. """
+
+    from alphazero.utils import main as utils_main
+    utils_main() # test utils
+
     test_object_creation()
 
 
