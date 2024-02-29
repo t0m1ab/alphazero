@@ -169,17 +169,17 @@ class PolicyValueNetwork(nn.Module):
         """ Returns the number of parameters of the network. """
         return sum(p.numel() for p in self.parameters())
     
-    def save_model(self, model_name: str, models_path: str = None, verbose: bool = False) -> None:
+    def save_model(self, model_name: str, model_path: str = None, verbose: bool = False) -> None:
         """ Saves the weights of the model to a '<model_name>.pt' file. """
-        models_path = DEFAULT_MODEL_PATH if models_path is None else models_path
         model_name = remove_ext(model_name)
-        model_dir = os.path.join(models_path, model_name) # folder containing the model and the config
+        # folder containing the model and the config
+        model_path = os.path.join(DEFAULT_MODEL_PATH, model_name) if model_path is None else model_path
         
         # save model weights
-        Path(model_dir).mkdir(parents=True, exist_ok=True)
-        torch.save(self.state_dict(), os.path.join(model_dir, f"{model_name}.pt"))
+        Path(model_path).mkdir(parents=True, exist_ok=True)
+        torch.save(self.state_dict(), os.path.join(model_path, f"{model_name}.pt"))
         if verbose:
-            print(f"{self} saved in: {model_dir}'")
+            print(f"{self} saved in: {model_path}'")
 
     @classmethod
     def from_pretrained(cls, model_name: str, models_path: str = None, verbose: bool = False) -> "PolicyValueNetwork":

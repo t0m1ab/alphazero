@@ -273,31 +273,35 @@ class AlphaZeroTrainer:
                 if self.verbose:
                     pbar.set_postfix({"loss": batch_losses[-1]})
             
-            self.loss_values[iter_idx][epoch_idx] = np.array(batch_losses)
+            self.loss_values[iter_idx][epoch_idx] = list(batch_losses)
     
     def update_network(self, iter_idx: int):
         """ Update the main network <self.nn> with the twin network <self.nn_twin>. """
         self.nn = self.nn_twin.clone()
         self.nn_twin = None
     
-    def save_player(self, model_name: str):
+    def save_player(self, model_name: str, model_path: str = None):
         """ Save the trained neural network with the corresponding config file locally. """
 
+        model_path = os.path.join(DEFAULT_MODEL_PATH, model_name) if model_path is None else model_path
+        
         # save the neural network weights
-        self.nn.save_model(model_name, verbose=False)
+        self.nn.save_model(model_name, model_path, verbose=False)
 
         # save the config file (path already exists because save_model created it just before)
-        model_path = os.path.join(DEFAULT_MODEL_PATH, model_name)
         with open(os.path.join(model_path, "config.json"), "w") as f:
             json.dump(self.config, f, indent=4)
-
-        self.print(f"\n[3] {self.az_player} for {self.game.capitalize()} saved in '{model_path}'")
+        
+        # save the loss values during training
+        with open(os.path.join(model_path, "loss.json"), "w") as f:
+            json.dump(self.loss_values, f, indent=4)
 
     def train(
             self, 
             experiment_name: str = None, 
             save: bool = True, 
             push_to_hub: bool = False, 
+            save_checkpoints: bool = False,
             verbose: bool = None
         ):
         """ Train the AlphaZero player for the specified game. """
@@ -333,9 +337,19 @@ class AlphaZeroTrainer:
 
             # update the main network with the twin network
             self.update_network(iter_idx)
+
+            # save a checkpoint
+            if save_checkpoints:
+                chkpt_name = f"{experiment_name}-chkpt-{iter_idx+1}"
+                self.save_player(
+                    model_name=chkpt_name, 
+                    model_path=os.path.join(DEFAULT_MODEL_PATH, experiment_name, chkpt_name)
+                )
+                self.print(f"\n{self} checkpoint {iter_idx+1}/{self.config.iterations} successfully saved.")
         
         if save:
             self.save_player(experiment_name)
+            self.print(f"\n[3] {self} successfully saved!")
         
         if push_to_hub:
             self.print(f"\n[4] Pushing {self.az_player} to the Hugging Face Hub...\n")
@@ -353,7 +367,12 @@ def main():
 
     trainer = AlphaZeroTrainer(game="othello", verbose=True)
     # trainer.get_training_time_estimation()
-    trainer.train(experiment_name="alphazero-fake", save=True, push_to_hub=False)
+    trainer.train(
+        experiment_name="alphazero-fake", 
+        save=True, 
+        push_to_hub=False,
+        save_checkpoints=True,
+    )
 
 
 if __name__ == "__main__":
