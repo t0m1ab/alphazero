@@ -8,11 +8,12 @@ from collections import defaultdict
 from datetime import timedelta
 
 import alphazero
+from alphazero.base import PolicyValueNetwork
 from alphazero.utils import dotdict
 from alphazero.players import AlphaZeroPlayer
+from alphazero.games.configs import DEFAULT_CONFIGS
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
 from alphazero.timer import SelfPlayTimer, NeuralTimer
-from alphazero.configs.configs import CONFIGS
 
 
 class Sample():
@@ -61,19 +62,17 @@ class Sample():
 
 class AlphaZeroTrainer:
 
-    DEFAULT_SAVE_DIR = os.path.join(alphazero.__path__[0], "outputs/")
+    DEFAULT_EXP_NAME = "undefined_alphazero"
 
-    DEFAULT_EXP_NAME = "alphazero_test"
-
-    def __init__(self, game: str, json_config_file: str = None, save_dir: str = None, verbose: bool = False):
+    def __init__(self, game: str, json_config_file: str = None, verbose: bool = False):
         
         # load/init the configuration
-        if game in CONFIGS:
+        if game in DEFAULT_CONFIGS:
             self.game = game # store the name of the game
             if json_config_file is None: # load the default configuration
-                self.config = CONFIGS[game].to_dict()
+                self.config = DEFAULT_CONFIGS[game].to_dict()
             else:
-                self.config = self.load_config(json_config_file)
+                self.config = self.load_json_config(json_config_file)
         else:
             raise ValueError(f"Game '{game}' is not supported by AlphaZeroTrainer.")
 
@@ -84,17 +83,15 @@ class AlphaZeroTrainer:
         self.az_player = None # AlphaZeroPlayer object 
         self.memory = None # list storing normalize Sample objects to use for training the nn
 
-        self.save_dir = save_dir if save_dir is not None else AlphaZeroTrainer.DEFAULT_SAVE_DIR
         self.verbose = verbose
-
         self.loss_values = defaultdict(dict) # store loss values for each iteration and epoch
     
     def __str__(self) -> str:
         return f"{self.__class__.__name__}{self.game.capitalize()}"
     
-    def load_config(self, json_config_file: str):
+    def load_json_config(self, json_config_file: str):
         """ Load the configuration from a JSON file. """
-        default_config = CONFIGS[self.game].to_dict()
+        default_config = DEFAULT_CONFIGS[self.game].to_dict()
         with open(json_config_file, "r") as f:
             json_config = json.load(f)
         
@@ -281,11 +278,9 @@ class AlphaZeroTrainer:
         self.nn = self.nn_twin.clone()
         self.nn_twin = None
 
-    def train(self, experiment_name: str = None, save_dir: str = None, verbose: bool = None):
+    def train(self, experiment_name: str = None, save: bool = True, verbose: bool = None):
         """ Train the AlphaZero player for the specified game. """
         
-        if save_dir is not None:
-            self.save_dir = save_dir
         experiment_name = experiment_name if experiment_name is not None else AlphaZeroTrainer.DEFAULT_EXP_NAME
 
         self.verbose = verbose if verbose is not None else self.verbose
@@ -321,11 +316,27 @@ class AlphaZeroTrainer:
         # for iter_idx in range(self.config.iterations):
         #     for epoch_idx in range(self.config.epochs):
         #         print(f"{iter_idx},{epoch_idx} : {self.loss_values[iter_idx][epoch_idx]}")
+        
+        if save:
+            self.save_player(experiment_name)
+    
+    def save_player(self, model_name: str):
+        """ Save the trained neural network with the corresponding config file. """
+
+        # save the neural network weights
+        self.nn.save_model(model_name, verbose=False)
+
+        # save the config file (path already exists because save_model created it just before)
+        model_path = os.path.join(PolicyValueNetwork.DEFAULT_MODEL_PATH, model_name)
+        with open(os.path.join(model_path, "config.json"), "w") as f:
+            json.dump(self.config, f, indent=4)
+
+        self.print(f"\n[3] {self.az_player} for {self.game.capitalize()} saved in '{model_path}'")
 
 
 def main():
 
-    for game in CONFIGS:
+    for game in DEFAULT_CONFIGS:
         trainer = AlphaZeroTrainer(game=game)
         print(f"{trainer} trainer created successfully!")
 
@@ -334,7 +345,7 @@ def fake_training():
 
     trainer = AlphaZeroTrainer(game="othello")
     # trainer.get_training_time_estimation()
-    trainer.train(verbose=True)
+    trainer.train(experiment_name="othello_8x8", save=True, verbose=True)
 
 
 if __name__ == "__main__":

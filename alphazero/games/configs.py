@@ -1,6 +1,6 @@
 from alphazero.games.othello import OthelloConfig
 
 
-CONFIGS = {
+DEFAULT_CONFIGS = {
     "othello": OthelloConfig
 }

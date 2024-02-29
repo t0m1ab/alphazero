@@ -5,8 +5,8 @@ import torch
 
 from alphazero.utils import dotdict
 from alphazero.players import AlphaZeroPlayer
+from alphazero.games.configs import DEFAULT_CONFIGS
 from alphazero.games.othello import OthelloBoard, OthelloNet
-from alphazero.configs.configs import CONFIGS
 
 
 class SelfPlayTimer():
@@ -17,7 +17,7 @@ class SelfPlayTimer():
     def __init__(self, game: str, config: dotdict = None):
 
         # load default config
-        self.config = CONFIGS[game].to_dict() if config is None else config
+        self.config = DEFAULT_CONFIGS[game].to_dict() if config is None else config
 
         # define Board, PolicyValueNetwork and Player
         self.board = OthelloBoard(n=self.config.board_size)
@@ -84,7 +84,7 @@ class NeuralTimer():
     def __init__(self, game: str, config: dotdict = None):
 
         # load default config
-        self.config = CONFIGS[game].to_dict() if config is None else config
+        self.config = DEFAULT_CONFIGS[game].to_dict() if config is None else config
 
         # define Board, PolicyValueNetwork and Player
         self.board = OthelloBoard(n=self.config.board_size)

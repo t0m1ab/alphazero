@@ -1,3 +1,6 @@
 numpy
 matplotlib
 tqdm
+aenum
+torch
+huggingface-hub

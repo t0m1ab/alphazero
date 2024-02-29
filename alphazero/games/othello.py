@@ -14,17 +14,17 @@ from alphazero.base import Action, Board, PolicyValueNetwork, Config
 class OthelloConfig(Config):
     """ Configuration for AlphaOthelloZero training. Any config file must define exactly all values listed below. """
     # GAME settings
-    BOARD_SIZE = 8
+    BOARD_SIZE: int = 6 # (6)
     # PLAYER settings
-    SIMULATIONS = 50 # None to use compute_time
-    COMPUTE_TIME = None # None to use n_sim
+    SIMULATIONS: int = 50 # None to use compute_time # (d100)
+    COMPUTE_TIME: float = None # None to use n_sim # (None)
     # TRAINING settings
-    ITERATIONS = 30
-    EPISODES = 100
-    EPOCHS = 10
-    BATCH_SIZE = 64
-    LEARNING_RATE = 0.001
-    DEVICE = "cpu"
+    ITERATIONS: int = 2 # (30)
+    EPISODES: int = 10 # (100)
+    EPOCHS: int = 5 # (10)
+    BATCH_SIZE: int = 64 # (64)
+    LEARNING_RATE: float = 0.001 # (0.001)
+    DEVICE:str = "cpu"
 
 
 class OthelloBoard(Board):
@@ -233,7 +233,7 @@ class OthelloBoard(Board):
         plt.close()
 
 
-class OthelloNet(nn.Module, PolicyValueNetwork):
+class OthelloNet(PolicyValueNetwork):
     """
     Policy-Value network to play Othello using AlphaZero algorithm.
     The network evaluates the state of the board from the viewpoint of the player with id 1 and outputs a value v in [-1,1]
@@ -241,17 +241,25 @@ class OthelloNet(nn.Module, PolicyValueNetwork):
     The network also outputs a policy p representing the probability distribution of the next move to play.
     """
 
-    def __init__(self, n: int, device: str = None, *args, **kwargs):
-
+    def __init__(self, n: int = 0, device: str = None, config_dict: dict = None):
+        """ If <config_dict> is provided, the value of <n> will be automatically overwritten. """
         super().__init__()
-        self.board_dim = n
+
+        # parametrized values
+        self.config = config_dict
+        if self.config is not None and not "board_size" in self.config:
+            raise ValueError("config_dict must contain a value of 'board_size' to initialize the network.")
+        self.board_dim = n if self.config is None else self.config["board_size"]
+        if self.board_dim == 0:
+            raise ValueError("The board size must be a positive and even integer like 4, 6 or 8.")
+        self.device = PolicyValueNetwork.get_torch_device(device)
+        
+        # fixed values
         self.action_size = self.board_dim * self.board_dim + 1
         self.n_channels = 32
         self.dropout = 0.3
-        self.device = PolicyValueNetwork.get_torch_device(device)
-        self.args = args
-        self.kwargs = kwargs
 
+        # layers
         self.conv1 = nn.Conv2d(1, self.n_channels, 3, stride=1, padding=1, device=self.device)
         self.conv2 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, padding=1, device=self.device)
         self.conv3 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, device=self.device)
@@ -270,7 +278,7 @@ class OthelloNet(nn.Module, PolicyValueNetwork):
         self.fc_bn2 = nn.BatchNorm1d(512, device=self.device)
 
         self.fc_probs = nn.Linear(512, self.action_size, device=self.device)
-        self.fc_value = nn.Linear(512, 1, device=self.device)
+        self.fc_value = nn.Linear(512, 1, device=self.device)        
 
     def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
         """ Forward through the network and outputs (logits of probabilitites, value). """

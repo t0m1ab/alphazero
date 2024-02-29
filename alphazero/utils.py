@@ -16,6 +16,11 @@ def fair_max(elements: list | np.ndarray, key = lambda x: x) -> int:
     return max_elements[np.random.choice(len(max_elements))]
 
 
+def remove_ext(filename: str) -> str:
+    """ Remove the extension of a filename. """
+    return filename.split(".")[0]
+
+
 def random_play(n: int = 8, n_turns: int = 100, display_dir: str = None) -> None:
     """ Generate a random game of Othello and display the board at the end. """
 

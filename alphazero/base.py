@@ -1,12 +1,15 @@
 import os
+from pathlib import Path
 from abc import abstractmethod
 from aenum import Enum, NoAlias
 from copy import deepcopy
+import json
 import numpy as np
 import torch
+from torch import nn
 
 import alphazero
-from alphazero.utils import dotdict
+from alphazero.utils import dotdict, remove_ext
 
 
 class Action():
@@ -148,13 +151,15 @@ class Player():
         return {}
 
 
-class PolicyValueNetwork():
+class PolicyValueNetwork(nn.Module):
     """
     Base class to encode the logic of a policy-value network used in by AlphaZero type of players
     """
 
+    DEFAULT_MODEL_PATH = os.path.join(alphazero.__path__[0], "models/")
+
     def __init__(self):
-        pass
+        super().__init__()
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -166,6 +171,43 @@ class PolicyValueNetwork():
     def get_parameters_count(self) -> int:
         """ Returns the number of parameters of the network. """
         return sum(p.numel() for p in self.parameters())
+    
+    def save_model(self, model_name: str, models_path: str = None, verbose: bool = False) -> None:
+        """ Saves the weights of the model to a '<model_name>.pt' file. """
+        models_path = PolicyValueNetwork.DEFAULT_MODEL_PATH if models_path is None else models_path
+        model_name = remove_ext(model_name)
+        model_dir = os.path.join(models_path, model_name) # folder containing the model and the config
+        
+        # save model weights
+        Path(model_dir).mkdir(parents=True, exist_ok=True)
+        torch.save(self.state_dict(), os.path.join(model_dir, f"{model_name}.pt"))
+        if verbose:
+            print(f"{self} saved in: {model_dir}'")
+
+    @classmethod
+    def from_pretrained(cls, model_name: str, models_path: str = None, verbose: bool = False) -> "PolicyValueNetwork":
+        """ Loads the model from using a 'config.json' file and '<model_name>.pt' weights. """
+        models_path = PolicyValueNetwork.DEFAULT_MODEL_PATH if models_path is None else models_path
+        model_name = remove_ext(model_name)
+        model_dir = os.path.join(models_path, model_name) # folder containing the model and the config
+
+        # check that config and model files exist
+        config_path = os.path.join(model_dir, "config.json")
+        pt_path = os.path.join(model_dir, f"{model_name}.pt")
+        if not os.path.isfile(config_path):
+            raise ValueError(f"Config file not found: {config_path}")
+        if not os.path.isfile(pt_path):
+            raise ValueError(f"Model file not found: {pt_path}")
+
+        # load and create model
+        with open(config_path, "r") as f:
+            model = cls(config_dict=json.load(f))
+        model.load_state_dict(torch.load(pt_path))
+
+        if verbose:
+            print(f"{model} loaded from: {model_dir}'")
+        
+        return model
 
     @staticmethod
     def get_torch_device(device: str) -> torch.device:
