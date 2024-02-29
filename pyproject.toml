@@ -2,7 +2,7 @@
 name = "alphazero"
 version = "0.1.0"
 description = "CS3A AlphaZero RL project"
-keywords = ["game", "ai", "othello", "reinforcement learning", "rl", "neural networks", "alphazero", "policy"]
+keywords = ["game", "ai", "othello", "reinforcement learning", "mcts", "neural networks", "alphazero", "policy"]
 # readme = "alphazero/README.md" # does not work...
 # license = {text = "MIT License"}
 requires-python = ">=3.10"
@@ -13,13 +13,16 @@ authors = [
     {name = "Sami Jallouli", email = "sami.jallouli@student-cs.fr"},
 ]
 
-urls = {source = "https://github.com/t0m1ab/alphazero"}
+urls = {source = "https://github.com/t0m1ab/alphazero", hub = "https://huggingface.co/t0m1ab"}
 
 # automatically install the following packages when installing the project (no need to pip install -r requirements.txt)
 dependencies = [
     "numpy",
     "matplotlib",
     "tqdm",
+    "aenum",
+    "torch",
+    "huggingface-hub",
 ]
 
 # optional dependencies are not installed by default but can be if specified like so: pip install .[dev]
