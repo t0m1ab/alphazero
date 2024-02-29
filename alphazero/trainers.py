@@ -64,27 +64,14 @@ class AlphaZeroTrainer:
 
     DEFAULT_EXP_NAME = "alphazero-undefined"
 
-    def __init__(self, game: str, json_config_file: str = None, verbose: bool = False):
-        
-        # load/init the configuration
-        if game in DEFAULT_CONFIGS:
-            self.game = game # store the name of the game
-            if json_config_file is None: # load the default configuration
-                self.config = DEFAULT_CONFIGS[game].to_dict()
-            else:
-                self.config = self.load_json_config(json_config_file)
-            if self.game != self.config.game:
-                raise ValueError(f"Game '{game}' and game '{self.config.game}' in the configuration file do not match.")
-        else:
-            raise ValueError(f"Game '{game}' is not supported by AlphaZeroTrainer.")
-
-        # main objects
+    def __init__(self, verbose: bool = False):
+        self.game = None # str: name of the game
+        self.config = None # dotdict: configuration parameters
         self.board = None # Board object
         self.nn = None # PolicyValueNetwork object
         self.nn_twin = None # nn clone to use for specific training methods
         self.az_player = None # AlphaZeroPlayer object 
         self.memory = None # list storing normalize Sample objects to use for training the nn
-
         self.verbose = verbose
         self.loss_values = defaultdict(dict) # store loss values for each iteration and epoch
     
@@ -100,12 +87,12 @@ class AlphaZeroTrainer:
         # check if the configuration parameters are valid
         for config_param in json_config.keys():
             if not config_param in default_config:
-                raise ValueError(f"Unknown configuration parameter '{config_param}' for game '{self.game}'")
+                raise ValueError(f"Unknown configuration parameter '{config_param}' for game {self.game.capitalize()}")
         
         # check if the configuration parameters are complete
         for config_param in default_config:
             if not config_param in json_config:
-                raise ValueError(f"Missing configuration parameter '{config_param}' for game '{self.game}'")
+                raise ValueError(f"Missing configuration parameter '{config_param}' for game {self.game.capitalize()}")
 
         return dotdict(json_config)
     
@@ -297,7 +284,9 @@ class AlphaZeroTrainer:
             json.dump(self.loss_values, f, indent=4)
 
     def train(
-            self, 
+            self,
+            game: str,
+            json_config_file: str = None,
             experiment_name: str = None, 
             save: bool = True, 
             push_to_hub: bool = False, 
@@ -305,6 +294,18 @@ class AlphaZeroTrainer:
             verbose: bool = None
         ):
         """ Train the AlphaZero player for the specified game. """
+
+        # load/init the configuration
+        if game in DEFAULT_CONFIGS:
+            self.game = game # store the name of the game
+            if json_config_file is None: # load the default configuration
+                self.config = DEFAULT_CONFIGS[game].to_dict()
+            else:
+                self.config = self.load_json_config(json_config_file)
+            if self.game != self.config.game:
+                raise ValueError(f"Game '{game}' and game '{self.config.game}' in the configuration file do not match.")
+        else:
+            raise ValueError(f"Game '{game}' is not supported by AlphaZeroTrainer.")
         
         experiment_name = experiment_name if experiment_name is not None else AlphaZeroTrainer.DEFAULT_EXP_NAME
         save = save or push_to_hub # model must be saved locally before pushing to the hub
@@ -320,6 +321,7 @@ class AlphaZeroTrainer:
             nn=self.nn, 
             verbose=verbose
         )
+        self.loss_values = defaultdict(dict) # reset the loss values
         self.print("")
         self.print_config(self.verbose)
 
@@ -365,10 +367,14 @@ def tests():
 
 def main():
 
-    trainer = AlphaZeroTrainer(game="othello", verbose=True)
+    trainer = AlphaZeroTrainer(verbose=True)
+
     # trainer.get_training_time_estimation()
+
     trainer.train(
-        experiment_name="alphazero-fake", 
+        game="othello",
+        json_config_file=None,
+        experiment_name="alphazero-fake-custom", 
         save=True, 
         push_to_hub=False,
         save_checkpoints=True,
