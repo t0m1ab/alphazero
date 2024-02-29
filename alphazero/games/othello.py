@@ -14,9 +14,10 @@ from alphazero.base import Action, Board, PolicyValueNetwork, Config
 class OthelloConfig(Config):
     """ Configuration for AlphaOthelloZero training. Any config file must define exactly all values listed below. """
     # GAME settings
+    GAME: str = "othello"
     BOARD_SIZE: int = 6 # (6)
     # PLAYER settings
-    SIMULATIONS: int = 50 # None to use compute_time # (d100)
+    SIMULATIONS: int = 100 # None to use compute_time # (100)
     COMPUTE_TIME: float = None # None to use n_sim # (None)
     # TRAINING settings
     ITERATIONS: int = 2 # (30)

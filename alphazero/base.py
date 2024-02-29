@@ -9,7 +9,7 @@ import torch
 from torch import nn
 
 import alphazero
-from alphazero.utils import dotdict, remove_ext
+from alphazero.utils import dotdict, remove_ext, DEFAULT_MODEL_PATH
 
 
 class Action():
@@ -155,9 +155,6 @@ class PolicyValueNetwork(nn.Module):
     """
     Base class to encode the logic of a policy-value network used in by AlphaZero type of players
     """
-
-    DEFAULT_MODEL_PATH = os.path.join(alphazero.__path__[0], "models/")
-
     def __init__(self):
         super().__init__()
 
@@ -174,7 +171,7 @@ class PolicyValueNetwork(nn.Module):
     
     def save_model(self, model_name: str, models_path: str = None, verbose: bool = False) -> None:
         """ Saves the weights of the model to a '<model_name>.pt' file. """
-        models_path = PolicyValueNetwork.DEFAULT_MODEL_PATH if models_path is None else models_path
+        models_path = DEFAULT_MODEL_PATH if models_path is None else models_path
         model_name = remove_ext(model_name)
         model_dir = os.path.join(models_path, model_name) # folder containing the model and the config
         
@@ -187,7 +184,7 @@ class PolicyValueNetwork(nn.Module):
     @classmethod
     def from_pretrained(cls, model_name: str, models_path: str = None, verbose: bool = False) -> "PolicyValueNetwork":
         """ Loads the model from using a 'config.json' file and '<model_name>.pt' weights. """
-        models_path = PolicyValueNetwork.DEFAULT_MODEL_PATH if models_path is None else models_path
+        models_path = DEFAULT_MODEL_PATH if models_path is None else models_path
         model_name = remove_ext(model_name)
         model_dir = os.path.join(models_path, model_name) # folder containing the model and the config
 

@@ -3,6 +3,7 @@ import os
 
 import alphazero
 from alphazero.tests import run_tests
+from alphazero.utils import download_all_models_from_hf_hub
 
 
 def print_help(help_msg_relative_path: str = "docs/help.txt"):
@@ -25,6 +26,9 @@ def main():
 
     elif ("--test" in sys.argv) or ("-t" in sys.argv):
         run_tests()
+    
+    elif ("--download" in sys.argv) or ("-d" in sys.argv):
+        download_all_models_from_hf_hub(verbose=True)
 
     else:
         print("command 'alphazero' is working: try --help or --test")

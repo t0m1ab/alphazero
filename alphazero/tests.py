@@ -11,7 +11,7 @@ def test_object_creation():
     from alphazero.players import main as players_main
     from alphazero.games.othello import main as othello_main
     from alphazero.arena import main as arena_main
-    from alphazero.trainers import main as trainers_main
+    from alphazero.trainers import tests as trainers_main
     from alphazero.timer import main as timer_main
 
     base_main()
@@ -28,8 +28,8 @@ def test_object_creation():
 def run_tests():
     """ Run all tests for the package. """
 
-    from alphazero.utils import main as utils_main
-    utils_main() # test utils
+    from alphazero.utils import tests as utils_tests
+    utils_tests() # test utils
 
     test_object_creation()
 
