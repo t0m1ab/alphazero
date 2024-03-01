@@ -64,8 +64,11 @@ class AlphaZeroTrainer:
 
     DEFAULT_EXP_NAME = "alphazero-undefined"
 
-    def __init__(self, verbose: bool = False):
-        self.game = None # str: name of the game
+    def __init__(self, game: str, verbose: bool = False):
+        if game in DEFAULT_CONFIGS:
+            self.game = game # str: name of the game
+        else:
+            raise ValueError(f"Game '{game}' is not supported by AlphaZeroTrainer.")
         self.config = None # dotdict: configuration parameters
         self.board = None # Board object
         self.nn = None # PolicyValueNetwork object
@@ -285,7 +288,6 @@ class AlphaZeroTrainer:
 
     def train(
             self,
-            game: str,
             json_config_file: str = None,
             experiment_name: str = None, 
             save: bool = True, 
@@ -296,16 +298,12 @@ class AlphaZeroTrainer:
         """ Train the AlphaZero player for the specified game. """
 
         # load/init the configuration
-        if game in DEFAULT_CONFIGS:
-            self.game = game # store the name of the game
-            if json_config_file is None: # load the default configuration
-                self.config = DEFAULT_CONFIGS[game].to_dict()
-            else:
-                self.config = self.load_json_config(json_config_file)
-            if self.game != self.config.game:
-                raise ValueError(f"Game '{game}' and game '{self.config.game}' in the configuration file do not match.")
+        if json_config_file is None: # load the default configuration
+            self.config = DEFAULT_CONFIGS[self.game].to_dict()
         else:
-            raise ValueError(f"Game '{game}' is not supported by AlphaZeroTrainer.")
+            self.config = self.load_json_config(json_config_file)
+        if self.game != self.config.game:
+            raise ValueError(f"Game '{self.game}' and game '{self.config.game}' in the configuration file do not match.")
         
         experiment_name = experiment_name if experiment_name is not None else AlphaZeroTrainer.DEFAULT_EXP_NAME
         save = save or push_to_hub # model must be saved locally before pushing to the hub
@@ -367,12 +365,11 @@ def tests():
 
 def main():
 
-    trainer = AlphaZeroTrainer(verbose=True)
+    trainer = AlphaZeroTrainer(game="othello", verbose=True)
 
     # trainer.get_training_time_estimation()
 
     trainer.train(
-        game="othello",
         json_config_file=None,
         experiment_name="alphazero-fake-custom", 
         save=True, 

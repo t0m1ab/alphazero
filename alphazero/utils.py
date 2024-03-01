@@ -7,6 +7,7 @@ import alphazero
 
 DEFAULT_USER_HF = "t0m1ab"
 DEFAULT_MODEL_PATH = os.path.join(alphazero.__path__[0], "models/")
+DEFAULT_TOKEN_ENV_VAR_NAME = "HF_HUB_TOKEN"
 
 
 class dotdict(dict):
@@ -30,10 +31,9 @@ def remove_ext(filename: str) -> str:
 
 
 def get_hf_token(token: str = None) -> str:
-    """ Get the Hugging Face token from the environment variables. Set to None if not found. """
-    token = os.environ["HF_HUB_TOKEN"] if token is None else token
-    if len(token) == 0:
-        return None
+    """ Get the Hugging Face token stored as an env variable if <token> is None else returns <token>. """
+    if token is None and DEFAULT_TOKEN_ENV_VAR_NAME in os.environ:
+        token = os.environ[DEFAULT_TOKEN_ENV_VAR_NAME]
     return token
 
 
@@ -106,6 +106,10 @@ def download_all_models_from_hf_hub(
     """
 
     model_ids = list_models_from_hf_hub() # deafult author is DEFAULT_USER_HF
+
+    if len(model_ids) == 0:
+        print(f"No alphazero models found on the Hugging Face Hub... A token (stored in env var {DEFAULT_TOKEN_ENV_VAR_NAME}) may be required to access private models.") if verbose else None
+        return
 
     for model_id in model_ids:
         download_model_from_hf_hub(

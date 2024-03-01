@@ -13,7 +13,7 @@ git clone git@github.com:t0m1ab/alphazero.git
 
 * Install `alphazero` as a package in edit mode (see config in `pyproject.toml`): 
 ```bash
-mv alphazero/
+cd alphazero/
 pip install -e .
 ``` 
 
@@ -28,7 +28,7 @@ alphazero --help
 alphazero --download
 ```
 ```python
-python utils.py
+python alphazero/utils.py
 ``` 
 All models and configuration files will be stored in a `models/` folder by default when loading or training a player.
 
