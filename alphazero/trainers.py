@@ -11,7 +11,7 @@ import alphazero
 from alphazero.base import PolicyValueNetwork
 from alphazero.utils import dotdict, push_model_to_hf_hub, DEFAULT_MODEL_PATH
 from alphazero.players import AlphaZeroPlayer
-from alphazero.games.configs import DEFAULT_CONFIGS
+from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
 from alphazero.timer import SelfPlayTimer, NeuralTimer
 
@@ -65,7 +65,7 @@ class AlphaZeroTrainer:
     DEFAULT_EXP_NAME = "alphazero-undefined"
 
     def __init__(self, game: str, verbose: bool = False):
-        if game in DEFAULT_CONFIGS:
+        if game in CONFIGS_REGISTER:
             self.game = game # str: name of the game
         else:
             raise ValueError(f"Game '{game}' is not supported by AlphaZeroTrainer.")
@@ -83,7 +83,7 @@ class AlphaZeroTrainer:
     
     def load_json_config(self, json_config_file: str):
         """ Load the configuration from a JSON file. """
-        default_config = DEFAULT_CONFIGS[self.game].to_dict()
+        default_config = CONFIGS_REGISTER[self.game].to_dict()
         with open(json_config_file, "r") as f:
             json_config = json.load(f)
         
@@ -299,7 +299,7 @@ class AlphaZeroTrainer:
 
         # load/init the configuration
         if json_config_file is None: # load the default configuration
-            self.config = DEFAULT_CONFIGS[self.game].to_dict()
+            self.config = CONFIGS_REGISTER[self.game].to_dict()
         else:
             self.config = self.load_json_config(json_config_file)
         if self.game != self.config.game:
@@ -311,8 +311,8 @@ class AlphaZeroTrainer:
 
         # init the main objects
         self.print("[1] Initializing the Board, PolicyValueNetwork and Player...") 
-        self.board = OthelloBoard(n=self.config.board_size)
-        self.nn = OthelloNet(n=self.config.board_size, device=self.config.device)
+        self.board = BOARDS_REGISTER[self.game](n=self.config.board_size)
+        self.nn = NETWORKS_REGISTER[self.game](n=self.config.board_size, device=self.config.device)
         self.az_player = AlphaZeroPlayer(
             n_sim=self.config.simulations, 
             compute_time=self.config.compute_time, 
@@ -358,7 +358,7 @@ class AlphaZeroTrainer:
 
 def tests():
 
-    for game in DEFAULT_CONFIGS:
+    for game in CONFIGS_REGISTER:
         trainer = AlphaZeroTrainer(game=game)
         print(f"{trainer} trainer created successfully!")
 

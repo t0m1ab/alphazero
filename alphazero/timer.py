@@ -5,7 +5,7 @@ import torch
 
 from alphazero.utils import dotdict
 from alphazero.players import AlphaZeroPlayer
-from alphazero.games.configs import DEFAULT_CONFIGS
+from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER
 from alphazero.games.othello import OthelloBoard, OthelloNet
 
 
@@ -17,11 +17,11 @@ class SelfPlayTimer():
     def __init__(self, game: str, config: dotdict = None):
 
         # load default config
-        self.config = DEFAULT_CONFIGS[game].to_dict() if config is None else config
+        self.config = CONFIGS_REGISTER[game].to_dict() if config is None else config
 
         # define Board, PolicyValueNetwork and Player
-        self.board = OthelloBoard(n=self.config.board_size)
-        self.nn = OthelloNet(n=self.config.board_size, device=self.config.device)
+        self.board = BOARDS_REGISTER[game](n=self.config.board_size)
+        self.nn = NETWORKS_REGISTER[game](n=self.config.board_size, device=self.config.device)
         self.az_player = AlphaZeroPlayer(
             n_sim=self.config.simulations, 
             compute_time=self.config.compute_time, 
@@ -84,11 +84,11 @@ class NeuralTimer():
     def __init__(self, game: str, config: dotdict = None):
 
         # load default config
-        self.config = DEFAULT_CONFIGS[game].to_dict() if config is None else config
+        self.config = CONFIGS_REGISTER[game].to_dict() if config is None else config
 
         # define Board, PolicyValueNetwork and Player
-        self.board = OthelloBoard(n=self.config.board_size)
-        self.nn = OthelloNet(n=self.config.board_size, device=self.config.device)
+        self.board = BOARDS_REGISTER[game](n=self.config.board_size)
+        self.nn = NETWORKS_REGISTER[game](n=self.config.board_size, device=self.config.device)
     
     def get_fake_batch(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """ Create a fake batch of data for the neural network. """

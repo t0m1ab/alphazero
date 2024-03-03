@@ -29,6 +29,16 @@ class TreeEval(Enum):
         return {x.value: x for x in cls}
 
 
+class Config(Enum):
+    """ Base class to define configuration to train AlphaZero. """
+    _settings_ = NoAlias # avoid grouping items with same values
+
+    @classmethod
+    def to_dict(cls) -> dotdict[str, float | int | str]:
+        """ To access config parameters easily, for example: EPOCHS/Epochs/epochs -> config.epochs """
+        return dotdict({x.name.lower(): x.value for x in cls})
+
+
 class Board():
     """
     Base class to encode the logic of a game and the state of its board when playing.
@@ -153,7 +163,7 @@ class Player():
 
 class PolicyValueNetwork(nn.Module):
     """
-    Base class to encode the logic of a policy-value network used in by AlphaZero type of players
+    Base class to encode the logic of a policy-value network used by AlphaZeroPlayer players.
     """
     def __init__(self):
         super().__init__()
@@ -243,15 +253,10 @@ class PolicyValueNetwork(nn.Module):
         """ Returns the normalized probabilities over the legal moves. """
         raise NotImplementedError
 
-
-class Config(Enum):
-    """ Base class to define configuration to train AlphaZero. """
-    _settings_ = NoAlias # avoid grouping items with same values
-
-    @classmethod
-    def to_dict(cls) -> dotdict[str, float | int | str]:
-        """ To access config parameters easily, for example: EPOCHS/Epochs/epochs -> config.epochs """
-        return dotdict({x.name.lower(): x.value for x in cls})
+    @abstractmethod
+    def to_neural_array(self, move_probs: dict[Action: float]) -> np.ndarray:
+        """ Returns the probabilitites of move_probs in the format given as output by the network. """
+        raise NotImplementedError
 
 
 def main():

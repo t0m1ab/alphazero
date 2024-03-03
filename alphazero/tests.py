@@ -33,6 +33,9 @@ def run_tests():
 
     test_object_creation()
 
+    from alphazero.games.registers import main as register_main
+    register_main() # check registers consistency
+
 
 if __name__ == "__main__":
     run_tests()

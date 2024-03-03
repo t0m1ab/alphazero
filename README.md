@@ -45,7 +45,7 @@ All models and configuration files will be stored in a `models/` folder by defau
 * `tests.py`: contains various tests that can be run to check the implementation
 
 ### games/
-* `configs.py`: define default configurations mapping
+* `register.py`: define configurations, boards and networks mapping for each game from their name
 * `othello.py`: implementation of the Othello environment, game config and neural network for AlphaZero
 * `connect4.py`: TODO
 * `tictactoe.py`: TODO
