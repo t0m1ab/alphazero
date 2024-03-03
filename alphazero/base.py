@@ -90,7 +90,10 @@ class Board():
     
     @abstractmethod
     def get_score(self) -> int | float:
-        """ Returns the current score of the board from the viewpoint of self.player. """
+        """ 
+        Returns the current score of the board from the viewpoint of self.player.
+        Mainly used by the GreedyPlayer to choose an action.
+        """
         raise NotImplementedError
     
     @abstractmethod

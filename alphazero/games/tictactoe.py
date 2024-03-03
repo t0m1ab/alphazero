@@ -86,9 +86,28 @@ class TicTacToeBoard(Board):
         """ Returns the number of possible moves in the game = number of cells (pass is not allowed)."""
         return self.get_n_cells()
     
+    def get_alignments_sums(self) -> np.ndarray:
+        """ Returns the sum of pieces along all possible alignments at the current state of the game. """
+        row_sums = np.sum(self.grid, axis=1)
+        col_sums = np.sum(self.grid, axis=0)
+        diag_sums = [np.sum(np.diag(self.grid)), np.sum(np.diag(np.fliplr(self.grid)))]
+        return np.concatenate([row_sums, col_sums, diag_sums])
+
+    def get_nb_free_cells_on_alignments(self, player: int = None) -> np.ndarray:
+        """ Returns the number of free cells on each alignment at the current state of the game. """
+        free_cells = (self.grid == 0).astype(int)
+        row_sums = np.sum(free_cells, axis=1)
+        col_sums = np.sum(free_cells, axis=0)
+        diag_sums = [np.sum(np.diag(free_cells)), np.sum(np.diag(np.fliplr(free_cells)))]
+        return np.concatenate([row_sums, col_sums, diag_sums])
+    
     def get_score(self) -> int:
         """ Returns the current score of the board from the viewpoint of self.player. """
-        return np.sum(self.player * self.grid).astype(int)
+        player_alignments = self.player * self.get_alignments_sums()
+        free_cells_sums = (self.get_nb_free_cells_on_alignments() > 0).astype(int)
+        if 2 in player_alignments * free_cells_sums: # there exists a winning position for the player
+            return float("inf")
+        return 0
     
     def __is_a_cell(self, cell: tuple[int, int]) -> bool:
         """ Returns True if the cell is in the board, False otherwise. """
@@ -120,13 +139,6 @@ class TicTacToeBoard(Board):
         
         self.grid[move[0]][move[1]] = self.player # place the new piece on the board
         self.player = -self.player # switch player
-    
-    def get_alignments_sums(self, player: int = None) -> np.ndarray:
-        """ Returns the sum of pieces along all possible alignments at the current state of the game. """
-        row_sums = np.sum(self.grid, axis=1)
-        col_sums = np.sum(self.grid, axis=0)
-        diag_sums = [np.sum(np.diag(self.grid)), np.sum(np.diag(np.fliplr(self.grid)))]
-        return np.concatenate([row_sums, col_sums, diag_sums])
     
     def is_game_over(self) -> bool:
         """ Returns True if the game is over, False otherwise. """
