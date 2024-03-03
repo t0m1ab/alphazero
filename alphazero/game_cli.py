@@ -17,15 +17,15 @@ def othello():
 def tictactoe():
     """ Play TicTacToe with CLI. """
     player1 = HumanPlayer()
-    player2 = MCTSPlayer(n_sim=1000, verbose=True)
+    player2 = MCTSPlayer(compute_time=2.0, verbose=True)
     board = TicTacToeBoard()
     arena = Arena(player1, player2, board)
     arena.play_game(player2_starts=False, verbose=True, display=True)
 
 
 def main():
-    othello()
-    # tictactoe()
+    # othello()
+    tictactoe()
 
 
 if __name__ == "__main__":

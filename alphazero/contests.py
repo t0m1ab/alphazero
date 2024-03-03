@@ -35,7 +35,7 @@ def MCTS_vs_Random_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool 
 def MCTS_vs_Greedy_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between MCTSPlayer and RandomPlayer. """
 
-    player1 = MCTSPlayer(n_sim=1000)
+    player1 = MCTSPlayer(compute_time=0.2)
     player2 = GreedyPlayer()
     board = OthelloBoard(6)
 
@@ -72,7 +72,7 @@ def AZ_vs_Greedy_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = 
 def MCTS_vs_Random_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between MCTSPlayer and RandomPlayer. """
 
-    player1 = MCTSPlayer(compute_time=0.2)
+    player1 = MCTSPlayer(n_sim=1000)
     player2 = RandomPlayer()
     board = TicTacToeBoard()
 
@@ -107,7 +107,7 @@ def AZ_vs_Greedy_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: bool 
     n = 6
 
     nn = OthelloNet(n=n, device="cpu") # cuda or mps device will not work for parallel games
-    player1 = AlphaZeroPlayer(compute_time=0.2, nn=nn, verbose=verbose)
+    player1 = AlphaZeroPlayer(n_sim=1000, nn=nn, verbose=verbose)
     player2 = GreedyPlayer()
     board = TicTacToeBoard()
 
@@ -125,8 +125,8 @@ def AZ_vs_Greedy_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: bool 
 if __name__ == "__main__":
 
     # MCTS_vs_Random_Othello(n_rounds=50, n_process=10, verbose=False)
-    # MCTS_vs_Greedy_Othello(n_rounds=50, n_process=10, verbose=False)
-    AZ_vs_Greedy_Othello(n_rounds=10, n_process=1, verbose=False)
+    MCTS_vs_Greedy_Othello(n_rounds=50, n_process=10, verbose=False)
+    # AZ_vs_Greedy_Othello(n_rounds=10, n_process=1, verbose=False)
 
     # MCTS_vs_Random_TicTacToe(n_rounds=50, n_process=10, verbose=False)
     # MCTS_vs_Greedy_TicTacToe(n_rounds=50, n_process=10, verbose=False)

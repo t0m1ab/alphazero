@@ -192,13 +192,16 @@ class TicTacToeBoard(Board):
         plt.close()
 
 
-# class TicTacToeNet(PolicyValueNetwork):
-#     """
-#     Policy-Value network to play TicTacToe using AlphaZero algorithm.
-#     The network evaluates the state of the board from the viewpoint of the player with id 1 and outputs a value v in [-1,1]
-#     representing the probability of player with id 1 to win the game from the current state.
-#     The network also outputs a policy p representing the probability distribution of the next move to play.
-#     """
+class TicTacToeNet(PolicyValueNetwork):
+    """
+    Policy-Value network to play TicTacToe using AlphaZero algorithm.
+    The network evaluates the state of the board from the viewpoint of the player with id 1 and outputs a value v in [-1,1]
+    representing the probability of player with id 1 to win the game from the current state.
+    The network also outputs a policy p representing the probability distribution of the next move to play.
+    """
+
+    def __init__(self):
+        super().__init__()
 
 #     def __init__(
 #             self, 
@@ -321,8 +324,8 @@ def main():
     _ = TicTacToeBoard()
     print("TicTacToeBoard created successfully!")
 
-    # _ = TicTacToeNet()
-    # print("TicTacToeNet created successfully!")
+    _ = TicTacToeNet()
+    print("TicTacToeNet created successfully!")
     
 
 if __name__ == "__main__":
