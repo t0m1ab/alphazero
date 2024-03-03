@@ -18,7 +18,7 @@ class dotdict(dict):
 
 def fair_max(elements: list | np.ndarray, key = lambda x: x) -> int:
     """
-    Returns the index of the maximum element in the collection <elements> by randomly resolving ties.
+    Returns the index of the maximum element in the iterable <elements> by randomly resolving ties.
     """
     max_value = key(max(elements, key=key))
     max_elements = [x for x in elements if key(x) == max_value]
@@ -26,12 +26,12 @@ def fair_max(elements: list | np.ndarray, key = lambda x: x) -> int:
 
 
 def remove_ext(filename: str) -> str:
-    """ Remove the extension of a filename. """
+    """ Return <filename> without the extension"""
     return filename.split(".")[0]
 
 
 def get_hf_token(token: str = None) -> str:
-    """ Get the Hugging Face token stored as an env variable if <token> is None else returns <token>. """
+    """ Get the HF token stored as an env variable if <token> is None else returns <token>. """
     if token is None and DEFAULT_TOKEN_ENV_VAR_NAME in os.environ:
         token = os.environ[DEFAULT_TOKEN_ENV_VAR_NAME]
     return token
@@ -40,9 +40,14 @@ def get_hf_token(token: str = None) -> str:
 def list_models_from_hf_hub(
         author: str = None, 
         prefix: str = "alphazero", 
-        token: str = None
+        token: str = None,
     ) -> list:
-    """ List all the models available on the Hugging Face Hub linked to this project. """
+    """ 
+    ARGUMENTS:
+        - author: name of the user who hosts the models on the HF Hub.
+        - prefix: prefix of the models to list (a way to filter the models).
+        - token: token to use to list the models from the HF Hub. if a read token linked to <author> is specified, then list both public and private models.
+    """
     
     author = DEFAULT_USER_HF if author is None else author
     api = HfApi(token=get_hf_token(token)) # will only see public models if no token is provided
@@ -61,15 +66,18 @@ def download_model_from_hf_hub(
         models_dir: str = None, 
         token: str = None,
         verbose: bool = False,
-    ) -> str:
+    ) -> None:
     """ 
-    Download model matching <model_id> from the Hugging Face Hub and save it in <models_dir>. 
+    ARGUMENTS:
+        - model_id: id of the model to download from the HF Hub (model_id=f"{author}/{model_name}").
+        - models_dir: path to the local directory where the model will be saved.
+        - token: token to use to download the model from the HF Hub. Use it if the specified model is a private one.
     """
 
     token = get_hf_token(token)
     model_ids = list_models_from_hf_hub(prefix=None, token=token) # at least all public models
     if model_id not in model_ids:
-        raise ValueError(f"Model {model_id} not found on the Hugging Face Hub...")
+        raise ValueError(f"Model {model_id} not found on the HuggingFace Hub...")
 
     models_dir = DEFAULT_MODEL_PATH if models_dir is None else models_dir
     model_name = model_id.split("/")[-1]
@@ -100,15 +108,18 @@ def download_all_models_from_hf_hub(
         models_dir: str = None, 
         token: str = None,
         verbose: bool = False,
-    ) -> str:
+    ) -> None:
     """ 
-    Download all models linked to the project available in the HF Hub and save them in <models_dir>. 
+    ARGUMENTS:
+        - models_dir: path to the local directory where the models will be saved.
+        - token: token to use to download the models from the HF Hub. If None, the token is set to the value of the env var DEFAULT_TOKEN_ENV_VAR_NAME if it exists else no token is used.
     """
 
     model_ids = list_models_from_hf_hub() # deafult author is DEFAULT_USER_HF
 
     if len(model_ids) == 0:
-        print(f"No alphazero models found on the Hugging Face Hub... A token (stored in env var {DEFAULT_TOKEN_ENV_VAR_NAME}) may be required to access private models.") if verbose else None
+        if verbose:
+            print(f"No alphazero models found on the HuggingFace Hub... A token (stored in env var {DEFAULT_TOKEN_ENV_VAR_NAME}) may be required to access private models.")
         return
 
     for model_id in model_ids:
@@ -118,7 +129,9 @@ def download_all_models_from_hf_hub(
             token=token,
             verbose=verbose,
         )
-    print(f"Successfully downloaded {len(model_ids)} models from the Hugging Face Hub!") if verbose else None
+    
+    if verbose:
+        print(f"Successfully downloaded {len(model_ids)} models from the HuggingFace Hub!")
 
 
 def push_model_to_hf_hub(
@@ -131,8 +144,13 @@ def push_model_to_hf_hub(
         verbose: bool = False,
     ) -> None:
     """
-    Push folder named <model_name> located at <models_dir> to the Hugging Face Hub.
-    <additional_files> is a list of files to be pushed to the Hub along with the model.
+    ARGUMENTS:
+        - model_name: name of the model (i.e. folder containing model + config) to push to the HF Hub.
+        - author: name of the user who will host the repo of the model on the HF Hub.
+        - models_dir: path to the local directory containing the model folder.
+        - token: token to use to push the model to the HF Hub. If None, the token is set to the value of the env var DEFAULT_TOKEN_ENV_VAR_NAME if it exists else no token is used.
+        - private: if True, the model will be private on the HF Hub.
+        - additional_files: list of files one wants to push to the HF Hub along with the model.
     """
 
     models_dir = DEFAULT_MODEL_PATH if models_dir is None else models_dir
@@ -193,7 +211,7 @@ def push_model_to_hf_hub(
         )
     
     if verbose:
-        print(f"Model '{repo_id}' was sucessfully pushed to the Hugging Face Hub!")
+        print(f"Model '{repo_id}' was sucessfully pushed to the HuggingFace Hub!")
 
 
 def tests():
