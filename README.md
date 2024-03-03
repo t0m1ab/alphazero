@@ -41,6 +41,7 @@ All models and configuration files will be stored in a `models/` folder by defau
 * `arena.py`: organize several games between players and compare results
 * `game_ui.py`: interface between user and algorithm to play a game (TODO using gradio)
 * `contests.py`: define specific contests between players
+* `timers.py`: define timers to perform alphazero training time estimation
 * `utils.py`: utility functions
 * `tests.py`: contains various tests that can be run to check the implementation
 
