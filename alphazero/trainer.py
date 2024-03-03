@@ -13,7 +13,7 @@ from alphazero.utils import dotdict, push_model_to_hf_hub, DEFAULT_MODEL_PATH
 from alphazero.players import AlphaZeroPlayer
 from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
-from alphazero.timer import SelfPlayTimer, NeuralTimer
+from alphazero.timers import SelfPlayTimer, NeuralTimer
 
 
 class Sample():
