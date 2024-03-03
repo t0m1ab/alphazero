@@ -98,10 +98,10 @@ class OthelloBoard(Board):
         )
     
     def get_board_shape(self) -> tuple[int, int]:
-        return (self.n, self.n)
+        return self.grid.shape
     
     def get_n_cells(self) -> int:
-        return self.n * self.n
+        return np.prod(self.get_board_shape())
     
     def get_action_size(self) -> int:
         """ Returns the number of possible moves in the game = number of cells + 1 (to pass)."""
@@ -152,7 +152,7 @@ class OthelloBoard(Board):
     
     def get_moves(self, player: int = None) -> list[Action]:
         """ 
-        Returns all possible moves for player <player> which is self.player is <player> is None. 
+        Returns all possible moves for player <player> which is self.player if <player> is None. 
         If no move is available, returns [self.pass_move].
         Move self.pass_move is included in <moves> only when no other move is available to <player>.
         """
@@ -166,7 +166,7 @@ class OthelloBoard(Board):
         return list(moves)
     
     def get_random_move(self, player: int = None) -> Action:
-        """ Returns a random move for player <player>. If no move is available, returns (self.n, self.n) to pass."""
+        """ Returns a random move for player <player>. """
         available_moves = self.get_moves(player)
         return available_moves[np.random.choice(len(available_moves))]
       
@@ -190,10 +190,10 @@ class OthelloBoard(Board):
         """ Returns True if the game is over, False otherwise. """
         player1_moves = self.get_moves(player=1)
         player2_moves = self.get_moves(player=-1)
-        if (self.pass_move not in player1_moves) or (self.pass_move not in player2_moves):
-            return False 
+        if (self.pass_move in player1_moves) and (self.pass_move in player2_moves):
+            return True 
         else:
-            return True
+            return False
 
     def get_winner(self) -> int:
         """ Returns the id of the winner of the game (1 or -1) or 0 if the game is a draw."""
