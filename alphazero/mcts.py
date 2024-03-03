@@ -25,7 +25,7 @@ class Node:
     
     def __str__(self) -> str:
         n_siblings = len(self.parent.children) if self.parent is not None else 0
-        return f"Node: N={self.N} | Q={self.Q} | n_children={len(self.children)} | move={self.move} | n_siblings={n_siblings}"
+        return f"Node: N={self.N} | Q={self.Q} | UCT={self.UCT()} | n_children={len(self.children)} | move={self.move} | n_siblings={n_siblings}"
     
     def add_child(self, move: Action, prob: float = None) -> None:
         self.children[move] = Node(move=move, parent=self, prob=prob)
@@ -82,6 +82,8 @@ class MCT():
             return {board.pass_move: 1} # board.pass_move is None if the game doesn't allow to pass (see Board.__init__)
 
         if temp == 0: # return the move with the highest visit count
+            # for move, node in self.root.children.items():
+            #     print(f"{move} -> {node}")
             best_move, _ = fair_max(self.root.children.items(), key=lambda x: x[1].N)
             return {best_move: 1}
         else: # return a distribution of the moves according to their visit count
@@ -185,7 +187,7 @@ class MCT():
             reward = -1 if player_id == outcome else 1
         
         while node is not None:
-            node.Q += (node.N * node.Q + reward) / (node.N + 1) # update Q (expected reward of the transition that led to the node)
+            node.Q = (node.N * node.Q + reward) / (node.N + 1) # update Q (expected reward of the transition that led to the node)
             node.N += 1 # update N (number of visits of the node <=> number of times the transition that led to the node was selected)
             node = node.parent
             if draw:
