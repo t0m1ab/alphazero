@@ -11,8 +11,8 @@ def test_object_creation():
     from alphazero.players import main as players_main
     from alphazero.games.othello import main as othello_main
     from alphazero.arena import main as arena_main
-    from alphazero.trainers import tests as trainers_main
-    from alphazero.timer import main as timer_main
+    from alphazero.trainer import tests as trainers_main
+    from alphazero.timers import main as timer_main
 
     base_main()
     mcts_main()
