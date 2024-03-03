@@ -102,37 +102,48 @@ class AlphaZeroTrainer:
     def print(self, log: str):
         print(log) if self.verbose else None
 
-    def print_config(self, verbose: bool = True):
+    def print_config(self, config: dotdict, verbose: bool = True):
         """ Print the configuration parameters. """
         if verbose:
-            for pname, value in self.config.items():
+            for pname, value in config.items():
                 print(f"- {pname}: {value}")
     
-    def get_training_time_estimation(self) -> float:
+    def get_training_time_estimation(self, json_config_file: str = None) -> float:
         """ 
         Return the estimated time for the training. 
         Use SelfPlayTimer to estimate duration of an episode of the game.
         Use NeuralTimer to estimate duration of neural network optimization over a batch.
+        
+        ARGUMENTS:
+            - json_config_file: path to the JSON configuration file. Use the default configuration if None.
         """
 
-        self.print_config()
+        # load/init the configuration
+        if json_config_file is None: # load the default configuration
+            config = CONFIGS_REGISTER[self.game].to_dict()
+        else:
+            config = self.load_json_config(json_config_file)
+        if self.game != config.game:
+            raise ValueError(f"Game '{self.game}' and game '{config.game}' in the configuration file do not match.")
+
+        self.print_config(config)
 
         # compute episode duration approximations
-        spt = SelfPlayTimer(game=self.game, config=self.config)
+        spt = SelfPlayTimer(game=self.game, config=config)
         episode_duration_sec, episode_duration_steps = spt.timeit(n_episodes=10)
 
         # compute batch optimization duration approximation
-        nt = NeuralTimer(game=self.game, config=self.config)
+        nt = NeuralTimer(game=self.game, config=config)
         batch_optim_duration = nt.timeit(n_batches=100)
         
         # compute duration estimations for all steps
-        self_play_duration = self.config.episodes * episode_duration_sec
-        n_samples = self.config.episodes * episode_duration_steps
-        n_batches = n_samples // self.config.batch_size if self.config.batch_size < n_samples else 1
+        self_play_duration = config.episodes * episode_duration_sec
+        n_samples = config.episodes * episode_duration_steps
+        n_batches = n_samples // config.batch_size if config.batch_size < n_samples else 1
         epoch_optim_duration = batch_optim_duration * n_batches
-        optim_duration = self.config.epochs * epoch_optim_duration
+        optim_duration = config.epochs * epoch_optim_duration
         iter_duration = self_play_duration + optim_duration
-        training_duration = self.config.iterations * iter_duration
+        training_duration = config.iterations * iter_duration
 
         # print the results
         sp_datetime = str(timedelta(seconds=round(self_play_duration)))
@@ -170,7 +181,7 @@ class AlphaZeroTrainer:
 
                 # store the sample in the memory
                 memory_buffer.append(Sample(
-                    state=self.board.cells.copy(), 
+                    state=self.board.grid.copy(), 
                     pi=self.nn.to_neural_array(move_probs),
                     player=self.board.player,
                     episode_idx=episode_idx,
@@ -311,8 +322,8 @@ class AlphaZeroTrainer:
 
         # init the main objects
         self.print("[1] Initializing the Board, PolicyValueNetwork and Player...") 
-        self.board = BOARDS_REGISTER[self.game](n=self.config.board_size)
-        self.nn = NETWORKS_REGISTER[self.game](n=self.config.board_size, device=self.config.device)
+        self.board = BOARDS_REGISTER[self.game](config_dict=self.config)
+        self.nn = NETWORKS_REGISTER[self.game](config_dict=self.config)
         self.az_player = AlphaZeroPlayer(
             n_sim=self.config.simulations, 
             compute_time=self.config.compute_time, 
@@ -321,7 +332,7 @@ class AlphaZeroTrainer:
         )
         self.loss_values = defaultdict(dict) # reset the loss values
         self.print("")
-        self.print_config(self.verbose)
+        self.print_config(self.config, self.verbose)
 
         # training loop
         self.print("\n[2] Training...")
@@ -371,7 +382,7 @@ def main():
 
     trainer.train(
         json_config_file=None,
-        experiment_name="alphazero-fake-custom", 
+        experiment_name="alphazero-fake", 
         save=True, 
         push_to_hub=False,
         save_checkpoints=True,

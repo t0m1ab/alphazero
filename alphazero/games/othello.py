@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from alphazero.base import Action, Board, PolicyValueNetwork, Config
+from alphazero.utils import dotdict
 
 
 class OthelloConfig(Config):
@@ -31,8 +32,11 @@ class OthelloConfig(Config):
 class OthelloBoard(Board):
     """
     Class representing the Othello board and implementing the logic of the game.
-    The board is represented by a 2D numpy array of size n x n, where n is the size of the board.
-    The cells are filled with 1 if there is a black piece, -1 if there is a white piece, and 0 if the cell is empty.
+    The board is represented by a 2D numpy array of size n x n stored in self.grid (n is the size of the board).
+    The cells of the grid are filled with:
+        * 1 if there is a black piece
+        * -1 if there is a white piece
+        * 0 if the cell is empty.
     """
 
     DIRECTIONS = [(1,1), (1,0), (1,-1), (0,-1), (-1,-1), (-1,0), (-1,1), (0,1)]
@@ -41,43 +45,54 @@ class OthelloBoard(Board):
 
     def __init__(
             self, 
-            n: int, 
-            board: np.ndarray = None, 
+            n: int = None, 
+            grid: np.ndarray = None, 
             player: int = 1,
             display_dir: str = None,
+            config_dict: dotdict = None,
         ):
         super().__init__(display_dir)
 
-        if n % 2 != 0:
-            raise ValueError("Board size must be even")
-        self.n = n
-        self.cells = board if board is not None else self.__get_init_board()
-        self.player = player
+        if config_dict is not None:
+            self.__init_from_config(config_dict)
+        else:
+            self.n = n
+            self.grid = grid if grid is not None else self.__get_init_board()
+            self.player = player
+
+        if self.n % 2 != 0:
+            raise ValueError(f"Board size must be even but got n={self.n}")
         self.pass_move = self.get_board_shape() # pass is allowed in Othello only when a player has no legal move
         self.game_name = "othello"
     
+    def __init_from_config(self, config_dict: dotdict) -> None:
+        """ Initialize the Othello board from a configuration given in a dotdict. """
+        self.n = config_dict.board_size
+        self.grid = self.__get_init_board()
+        self.player = 1
+    
     def __get_init_board(self) -> np.ndarray:
         """ Returns the initial board state as a 2D np.ndarray representing the content of each cell. """  
-        cells = np.zeros((self.n, self.n))
-        cells[self.n//2-1][self.n//2-1] = 1
-        cells[self.n//2][self.n//2] = 1
-        cells[self.n//2-1][self.n//2] = -1
-        cells[self.n//2][self.n//2-1] = -1
-        return cells
+        grid = np.zeros((self.n, self.n))
+        grid[self.n//2-1][self.n//2-1] = 1
+        grid[self.n//2][self.n//2] = 1
+        grid[self.n//2-1][self.n//2] = -1
+        grid[self.n//2][self.n//2-1] = -1
+        return grid
     
     def __str__(self) -> str:
         return f"{self.__class__.__name__}{self.n}"
     
     def reset(self) -> None:
         """ Resets the board to the initial state. """
-        self.cells = self.__get_init_board()
+        self.grid = self.__get_init_board()
         self.player = 1
     
     def clone(self) -> "OthelloBoard":
         """ Returns a deep copy of the board. """
         return OthelloBoard(
             n=self.n, 
-            board=self.cells.copy(), 
+            grid=self.grid.copy(), 
             player=self.player,
             display_dir=self.display_dir,
         )
@@ -94,7 +109,7 @@ class OthelloBoard(Board):
     
     def get_score(self) -> int:
         """ Returns the current score of the board from the viewpoint of self.player. """
-        return np.sum(self.player * self.cells).astype(int)
+        return np.sum(self.player * self.grid).astype(int)
     
     def __is_a_cell(self, cell: tuple[int, int]) -> bool:
         """ Returns True if the cell is in the board, False otherwise. """
@@ -106,9 +121,9 @@ class OthelloBoard(Board):
         flips = []
         c = (cell[0] + dir[0], cell[1] + dir[1])
         while self.__is_a_cell(c):
-            if self.cells[c[0]][c[1]] == 0: # empty cell is breaking the sequence
+            if self.grid[c[0]][c[1]] == 0: # empty cell is breaking the sequence
                 return []
-            elif self.cells[c[0]][c[1]] == player: # sequence ends
+            elif self.grid[c[0]][c[1]] == player: # sequence ends
                 return flips
             flips.append(c) # sequence continues because the cell is occupied by the opponent
             c = (c[0] + dir[0], c[1] + dir[1])
@@ -120,13 +135,13 @@ class OthelloBoard(Board):
         if move == self.pass_move: # must check all free positions to see if the player can pass
             for row in range(self.n):
                 for col in range(self.n):
-                    if self.cells[row][col] == 0:
+                    if self.grid[row][col] == 0:
                         for dir in OthelloBoard.DIRECTIONS:
                             if len(self.__get_flips((row,col), dir, player)) > 0:
                                 return False
             return True
         
-        if not self.__is_a_cell(move) or self.cells[move[0]][move[1]] != 0: # check if the cell is real and empty
+        if not self.__is_a_cell(move) or self.grid[move[0]][move[1]] != 0: # check if the cell is real and empty
             return False
         
         for dir in OthelloBoard.DIRECTIONS: # check if the move would flip at least one piece
@@ -167,8 +182,8 @@ class OthelloBoard(Board):
         
         for dir in OthelloBoard.DIRECTIONS: # flip the pieces in all directions if needed
             for cell in self.__get_flips(move, dir):
-                self.cells[cell[0]][cell[1]] = self.player
-        self.cells[move[0]][move[1]] = self.player # place the new piece on the board
+                self.grid[cell[0]][cell[1]] = self.player
+        self.grid[move[0]][move[1]] = self.player # place the new piece on the board
         self.player = -self.player # switch player
     
     def is_game_over(self) -> bool:
@@ -208,11 +223,11 @@ class OthelloBoard(Board):
         
         for row in range(self.n):
             for col in range(self.n):
-                if self.cells[row][col] != 0:
+                if self.grid[row][col] != 0:
                     ax.add_patch(patches.Circle(
                         xy=(col+0.5, self.n - row - 0.5), # reverse the row index to match numpy array indexing
                         radius=0.4, 
-                        color=OthelloBoard.COLORS[self.cells[row][col]], 
+                        color=OthelloBoard.COLORS[self.grid[row][col]], 
                         zorder=10
                     ))
         
@@ -242,21 +257,26 @@ class OthelloNet(PolicyValueNetwork):
     The network also outputs a policy p representing the probability distribution of the next move to play.
     """
 
-    def __init__(self, n: int = 0, device: str = None, config_dict: dict = None):
+    def __init__(
+            self, 
+            n: int = None, 
+            device: str = None, 
+            config_dict: dotdict = None
+        ):
         """ If <config_dict> is provided, the value of <n> will be automatically overwritten. """
         super().__init__()
 
         # parametrized values
-        self.config = config_dict
-        if self.config is not None and not "board_size" in self.config:
-            raise ValueError("config_dict must contain a value of 'board_size' to initialize the network.")
-        self.board_dim = n if self.config is None else self.config["board_size"]
-        if self.board_dim == 0:
-            raise ValueError("The board size must be a positive and even integer like 4, 6 or 8.")
-        self.device = PolicyValueNetwork.get_torch_device(device)
+        if config_dict is not None:
+            self.__init_from_config(config_dict)
+        else:
+            if n is None:
+                raise ValueError("The board size must be a positive and even integer like 4, 6 or 8.")
+            self.n = n
+            self.device = PolicyValueNetwork.get_torch_device(device)
         
-        # fixed values
-        self.action_size = self.board_dim * self.board_dim + 1
+        # fixed values for the network's architecture
+        self.action_size = self.n * self.n + 1
         self.n_channels = 32
         self.dropout = 0.3
 
@@ -271,7 +291,7 @@ class OthelloNet(PolicyValueNetwork):
         self.bn3 = nn.BatchNorm2d(self.n_channels, device=self.device)
         self.bn4 = nn.BatchNorm2d(self.n_channels, device=self.device)
 
-        self.fc1_input_size = self.n_channels * (self.board_dim-4) * (self.board_dim-4)
+        self.fc1_input_size = self.n_channels * (self.n-4) * (self.n-4)
         self.fc1 = nn.Linear(self.fc1_input_size, 1024, device=self.device)
         self.fc_bn1 = nn.BatchNorm1d(1024, device=self.device)
 
@@ -279,12 +299,17 @@ class OthelloNet(PolicyValueNetwork):
         self.fc_bn2 = nn.BatchNorm1d(512, device=self.device)
 
         self.fc_probs = nn.Linear(512, self.action_size, device=self.device)
-        self.fc_value = nn.Linear(512, 1, device=self.device)        
+        self.fc_value = nn.Linear(512, 1, device=self.device) 
+
+    def __init_from_config(self, config_dict: dotdict) -> None:
+        """ Initialize the network from a config given in a dotdict. """
+        self.n = config_dict.board_size
+        self.device = PolicyValueNetwork.get_torch_device(config_dict.device) 
 
     def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
         """ Forward through the network and outputs (logits of probabilitites, value). """
         # x: batch_size x board_x x board_y
-        x = input.view(-1, 1, self.board_dim, self.board_dim) # batch_size x 1 x board_dim x board_dim
+        x = input.view(-1, 1, self.n, self.n) # batch_size x 1 x n x n
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
@@ -312,7 +337,7 @@ class OthelloNet(PolicyValueNetwork):
         A PolicyValueNetwork always evaluates the board from the viewpoint of player with id 1.
         Therefore, the board should be switched if necessary.
         """
-        input = torch.tensor(board.player * board.cells, dtype=torch.float, device=self.device)
+        input = torch.tensor(board.player * board.grid, dtype=torch.float, device=self.device)
         torch_probs, torch_v = self.predict(input)
         probs = torch_probs.cpu().numpy().reshape(-1)
         return probs, torch_v.cpu().item()
@@ -324,7 +349,7 @@ class OthelloNet(PolicyValueNetwork):
         legal_probs = {}
         for move in legal_moves:
             # needs to make the difference between the pass move and the other moves
-            prob = probs[move[0] * self.board_dim + move[1]] if move != (self.board_dim, self.board_dim) else probs[-1]
+            prob = probs[move[0] * self.n + move[1]] if move != (self.n, self.n) else probs[-1]
             legal_probs[move] = prob
             sum_legal_probs += prob
 
@@ -341,10 +366,10 @@ class OthelloNet(PolicyValueNetwork):
         """ Returns the probabilitites of move_probs in the format given as output by the network. """
         pi = np.zeros(self.action_size)
         for move, prob in move_probs.items():
-            if move == (self.board_dim, self.board_dim): # pass move
+            if move == (self.n, self.n): # pass move
                 pi[-1] = prob
             else:
-                pi[move[0] * self.board_dim + move[1]] = prob
+                pi[move[0] * self.n + move[1]] = prob
         return pi
 
 

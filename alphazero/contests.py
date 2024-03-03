@@ -52,12 +52,12 @@ def MCTS_vs_Greedy(n_rounds: int = 2, n_process: int = 1, verbose: bool = False)
 def AZ_vs_Greedy(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between AlphaZeroPlayer and RandomPlayer. """
 
-    board_dim = 6
+    n = 6
 
-    nn = OthelloNet(n=board_dim, device="cpu") # cuda or mps device will not work for parallel games
+    nn = OthelloNet(n=n, device="cpu") # cuda or mps device will not work for parallel games
     player1 = AlphaZeroPlayer(compute_time=0.2, nn=nn, verbose=verbose)
     player2 = GreedyPlayer()
-    board = OthelloBoard(n=board_dim)
+    board = OthelloBoard(n=n)
 
     arena = Arena(player1, player2, board)
 

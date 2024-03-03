@@ -50,15 +50,19 @@ class Board():
 
     def __init__(self, display_dir: str = None):
         self.display_dir = display_dir if display_dir is not None else Board.DEFAULT_DISPLAY_DIR
-        self.n = None
-        self.cells = None
-        self.player = None
-        self.pass_move = None # must remain None if the game doesn't allow to pass
-        self.game_name = None
+        self.game_name = None # str: name of the game
+        self.grid = None # np.ndarray: the board representation (2D array filled with 0s, 1s and -1s)
+        self.player = None # int: id of the player that needs to play (1 or -1)
+        self.pass_move = None # Action: must remain None if the game never allows to pass
     
     def __str__(self) -> str:
         return self.__class__.__name__
     
+    @abstractmethod
+    def __init_from_config(self, config_dict: dotdict) -> None:
+        """ Initialize the board from a config given in a dotdict. """
+        raise NotImplementedError
+
     @abstractmethod
     def reset(self) -> None:
         """ Resets the board to the initial state. """
@@ -76,7 +80,7 @@ class Board():
     
     @abstractmethod
     def get_n_cells(self) -> int:
-        """ Returns the number of cells in the board. """
+        """ Returns the number of cells in self.grid. """
         return NotImplementedError
 
     @abstractmethod
@@ -228,6 +232,11 @@ class PolicyValueNetwork(nn.Module):
             raise ValueError("CUDA not available...")
 
         return torch.device(device)
+
+    @abstractmethod
+    def __init_from_config(self, config_dict: dotdict) -> None:
+        """ Initialize the network from a config given in a dotdict. """
+        raise NotImplementedError
 
     @abstractmethod
     def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
