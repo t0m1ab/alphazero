@@ -83,11 +83,11 @@ class Arena():
         
         score = abs(self.board.get_score())
 
-        if score == 0:
+        winner = self.board.get_winner() # 1 or -1 (or 0 for draw)
+        if winner == 0: # draw
             print("Draw!") if verbose else None
             return {"winner": 0, "score": score} if return_results else None
         else:
-            winner = self.board.get_winner() # 1 or -1
             if (winner == 1 and not player2_starts) or (winner == -1 and player2_starts):
                 player_winner = 1 # player1
             else:
