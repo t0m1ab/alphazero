@@ -2,12 +2,14 @@ import os
 from pathlib import Path
 from abc import abstractmethod
 from aenum import Enum, NoAlias
+from dataclasses import dataclass, asdict
 from copy import deepcopy
 import json
 import numpy as np
 import torch
 from torch import nn
 
+# base.py is the first file to be imported so it cannot rely on any other file except utils.py
 import alphazero
 from alphazero.utils import dotdict, remove_ext, DEFAULT_MODEL_PATH
 
@@ -29,14 +31,29 @@ class TreeEval(Enum):
         return {x.value: x for x in cls}
 
 
-class Config(Enum):
+@dataclass
+class Config():
     """ Base class to define configuration to train AlphaZero. """
-    _settings_ = NoAlias # avoid grouping items with same values
+    # GAME settings
+    game: str = None
+    # PLAYER settings
+    simulations: int = None
+    compute_time: float = None
+    # TRAINING settings
+    iterations: int = None
+    episodes: int = None
+    epochs: int = None
+    batch_size: int = None
+    learning_rate: float = None
+    device: str = None
+    # SAVE settings
+    save: bool = True
+    push: bool = False
+    save_checkpoints: bool = True
+    push_checkpoints: bool = False
 
-    @classmethod
-    def to_dict(cls) -> dotdict[str, float | int | str]:
-        """ To access config parameters easily, for example: EPOCHS/Epochs/epochs -> config.epochs """
-        return dotdict({x.name.lower(): x.value for x in cls})
+    def to_dict(self) -> dotdict[str, float | int | str]:
+        return dotdict(deepcopy(asdict(self)))
 
 
 class Board():
@@ -46,6 +63,7 @@ class Board():
     If you need to implement other methods, please use __method_name naming to make them private.
     """
 
+    CONFIG = Config
     DEFAULT_DISPLAY_DIR = os.path.join(alphazero.__path__[0], "outputs/")
 
     def __init__(self, display_dir: str = None):
@@ -59,8 +77,8 @@ class Board():
         return self.__class__.__name__
     
     @abstractmethod
-    def __init_from_config(self, config_dict: dotdict) -> None:
-        """ Initialize the board from a config given in a dotdict. """
+    def __init_from_config(self, config: Config) -> None:
+        """ Initialize the board from a Config object. """
         raise NotImplementedError
 
     @abstractmethod
@@ -172,6 +190,9 @@ class PolicyValueNetwork(nn.Module):
     """
     Base class to encode the logic of a policy-value network used by AlphaZeroPlayer players.
     """
+
+    CONFIG = Config
+
     def __init__(self):
         super().__init__()
 
@@ -215,8 +236,10 @@ class PolicyValueNetwork(nn.Module):
 
         # load and create model
         with open(config_path, "r") as f:
-            model = cls(config_dict=json.load(f))
-        model.load_state_dict(torch.load(pt_path))
+            json_config = json.load(f)
+        model_config = cls.CONFIG(**json_config) # fetch the right Config subclass and init with the json_dict
+        model = cls(config=model_config) # init the model with the config
+        model.load_state_dict(torch.load(pt_path)) # load the weights
 
         if verbose:
             print(f"{model} loaded from: {model_dir}'")
@@ -237,8 +260,8 @@ class PolicyValueNetwork(nn.Module):
         return torch.device(device)
 
     @abstractmethod
-    def __init_from_config(self, config_dict: dotdict) -> None:
-        """ Initialize the network from a config given in a dotdict. """
+    def __init_from_config(self, config: Config) -> None:
+        """ Initialize the network from a Config object. """
         raise NotImplementedError
 
     @abstractmethod

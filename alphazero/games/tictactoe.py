@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from aenum import Enum, NoAlias
+from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -9,23 +10,28 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from alphazero.base import Action, Board, PolicyValueNetwork, Config
-from alphazero.utils import dotdict
 
 
+@dataclass
 class TicTacToeConfig(Config):
     """ Configuration for AlphaTicTacToeZero training. Any config file must define exactly all values listed below. """
     # GAME settings
-    GAME: str = "tictactoe"
+    game: str = "tictactoe"
     # PLAYER settings
-    SIMULATIONS: int = 1000 # None to use compute_time # (100)
-    COMPUTE_TIME: float = None # None to use n_sim # (None)
+    simulations: int = 1000 # None to use compute_time # (100)
+    compute_time: float = None # None to use simulations # (None)
     # TRAINING settings
-    ITERATIONS: int = 2 # (30)
-    EPISODES: int = 10 # (100)
-    EPOCHS: int = 5 # (10)
-    BATCH_SIZE: int = 64 # (64)
-    LEARNING_RATE: float = 0.001 # (0.001)
-    DEVICE:str = "cpu"
+    iterations: int = 2 # (30)
+    episodes: int = 10 # (100)
+    epochs: int = 5 # (10)
+    batch_size: int = 64 # (64)
+    learning_rate: float = 0.001 # (0.001)
+    device: str = "cpu"
+    # SAVE settings
+    save: bool = True
+    push: bool = False
+    save_checkpoints: bool = True
+    push_checkpoints: bool = False
 
 
 class TicTacToeBoard(Board):
@@ -38,8 +44,8 @@ class TicTacToeBoard(Board):
         * 0 if the cell is empty.
     """
 
+    CONFIG = TicTacToeConfig
     DIRECTIONS = [(1,1), (1,0), (1,-1), (0,-1), (-1,-1), (-1,0), (-1,1), (0,1)]
-    
     COLORS = {-1: "white", 0: "green", 1: "black"}
 
     def __init__(
@@ -47,12 +53,12 @@ class TicTacToeBoard(Board):
             grid: np.ndarray = None, 
             player: int = 1,
             display_dir: str = None,
-            config_dict: dotdict = None,
+            config: Config = None,
         ):
         super().__init__(display_dir)
 
-        if config_dict is not None:
-            self.__init_from_config(config_dict)
+        if config is not None:
+            self.__init_from_config(config)
         else:
             self.grid = grid if grid is not None else np.zeros((3,3))
             self.player = player
@@ -64,8 +70,8 @@ class TicTacToeBoard(Board):
         self.grid = np.zeros((3,3))
         self.player = 1
     
-    def __init_from_config(self, config_dict: dotdict) -> None:
-        """ Initialize the TicTacToe board from a configuration given in a dotdict. """
+    def __init_from_config(self, config: Config) -> None:
+        """ Initialize the TicTacToe board from a configuration given in a Config object. """
         self.reset()
     
     def clone(self) -> "TicTacToeBoard":
@@ -212,123 +218,11 @@ class TicTacToeNet(PolicyValueNetwork):
     The network also outputs a policy p representing the probability distribution of the next move to play.
     """
 
+    CONFIG = TicTacToeConfig
+
     def __init__(self):
         super().__init__()
-
-#     def __init__(
-#             self, 
-#             n: int = None, 
-#             device: str = None, 
-#             config_dict: dotdict = None
-#         ):
-#         """ If <config_dict> is provided, the value of <n> will be automatically overwritten. """
-#         super().__init__()
-
-#         # parametrized values
-#         if config_dict is not None:
-#             self.__init_from_config(config_dict)
-#         else:
-#             if n is None:
-#                 raise ValueError("The board size must be a positive and even integer like 4, 6 or 8.")
-#             self.n = n
-#             self.device = PolicyValueNetwork.get_torch_device(device)
-        
-#         # fixed values for the network's architecture
-#         self.action_size = self.n * self.n + 1
-#         self.n_channels = 32
-#         self.dropout = 0.3
-
-#         # layers
-#         self.conv1 = nn.Conv2d(1, self.n_channels, 3, stride=1, padding=1, device=self.device)
-#         self.conv2 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, padding=1, device=self.device)
-#         self.conv3 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, device=self.device)
-#         self.conv4 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, device=self.device)
-
-#         self.bn1 = nn.BatchNorm2d(self.n_channels, device=self.device)
-#         self.bn2 = nn.BatchNorm2d(self.n_channels, device=self.device)
-#         self.bn3 = nn.BatchNorm2d(self.n_channels, device=self.device)
-#         self.bn4 = nn.BatchNorm2d(self.n_channels, device=self.device)
-
-#         self.fc1_input_size = self.n_channels * (self.n-4) * (self.n-4)
-#         self.fc1 = nn.Linear(self.fc1_input_size, 1024, device=self.device)
-#         self.fc_bn1 = nn.BatchNorm1d(1024, device=self.device)
-
-#         self.fc2 = nn.Linear(1024, 512, device=self.device)
-#         self.fc_bn2 = nn.BatchNorm1d(512, device=self.device)
-
-#         self.fc_probs = nn.Linear(512, self.action_size, device=self.device)
-#         self.fc_value = nn.Linear(512, 1, device=self.device) 
-
-#     def __init_from_config(self, config_dict: dotdict) -> None:
-#         """ Initialize the network from a config given in a dotdict. """
-#         self.n = config_dict.board_size
-#         self.device = PolicyValueNetwork.get_torch_device(config_dict.device) 
-
-#     def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
-#         """ Forward through the network and outputs (logits of probabilitites, value). """
-#         # x: batch_size x board_x x board_y
-#         x = input.view(-1, 1, self.n, self.n) # batch_size x 1 x n x n
-#         x = F.relu(self.bn1(self.conv1(x)))
-#         x = F.relu(self.bn2(self.conv2(x)))
-#         x = F.relu(self.bn3(self.conv3(x)))
-#         x = F.relu(self.bn4(self.conv4(x)))
-#         x = x.view(-1, self.fc1_input_size)
-
-#         x = F.dropout(F.relu(self.fc_bn1(self.fc1(x))), p=self.dropout, training=self.training) # batch_size x 1024
-#         x = F.dropout(F.relu(self.fc_bn2(self.fc2(x))), p=self.dropout, training=self.training) # batch_size x 512
-
-#         probs = self.fc_probs(x) # batch_size x action_size
-#         value = self.fc_value(x) # batch_size x 1
-
-#         return F.log_softmax(probs, dim=1), torch.tanh(value)
-    
-#     def predict(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
-#         """ Returns a policy and a value from the input state. """
-#         self.eval()
-#         with torch.no_grad():
-#             log_probs, v =  self.forward(input)
-#         return torch.exp(log_probs), v
-
-#     def evaluate(self, board: Board) -> tuple[np.ndarray, float]:
-#         """ 
-#         Evaluation of the state of the cloned board from the viewpoint of the player that needs to play. 
-#         A PolicyValueNetwork always evaluates the board from the viewpoint of player with id 1.
-#         Therefore, the board should be switched if necessary.
-#         """
-#         input = torch.tensor(board.player * board.grid, dtype=torch.float, device=self.device)
-#         torch_probs, torch_v = self.predict(input)
-#         probs = torch_probs.cpu().numpy().reshape(-1)
-#         return probs, torch_v.cpu().item()
-    
-#     def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:
-#         """ Returns the normalized probabilities over the legal moves. """
-
-#         sum_legal_probs = 0
-#         legal_probs = {}
-#         for move in legal_moves:
-#             # needs to make the difference between the pass move and the other moves
-#             prob = probs[move[0] * self.n + move[1]] if move != (self.n, self.n) else probs[-1]
-#             legal_probs[move] = prob
-#             sum_legal_probs += prob
-
-#         if sum_legal_probs < 1e-6: # set uniform probabilities if the sum is too close to 0
-#             print(f"The sum of the probabilities of the {len(legal_moves)} legal moves is {sum_legal_probs}")
-#             return {move: 1/len(legal_moves) for move in legal_moves}
-
-#         # normalize the probabilities to sum to 1
-#         norm_probs = {move: prob/sum_legal_probs for move, prob in legal_probs.items()}
-
-#         return norm_probs
-    
-#     def to_neural_array(self, move_probs: dict[Action: float]) -> np.ndarray:
-#         """ Returns the probabilitites of move_probs in the format given as output by the network. """
-#         pi = np.zeros(self.action_size)
-#         for move, prob in move_probs.items():
-#             if move == (self.n, self.n): # pass move
-#                 pi[-1] = prob
-#             else:
-#                 pi[move[0] * self.n + move[1]] = prob
-#         return pi
+        raise NotImplementedError("TicTacToeNet is not implemented yet.")
 
 
 def main():

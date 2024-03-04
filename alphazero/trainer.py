@@ -8,8 +8,8 @@ from collections import defaultdict
 from datetime import timedelta
 
 import alphazero
-from alphazero.base import PolicyValueNetwork
-from alphazero.utils import dotdict, push_model_to_hf_hub, DEFAULT_MODEL_PATH
+from alphazero.base import Config
+from alphazero.utils import push_model_to_hf_hub, DEFAULT_MODEL_PATH
 from alphazero.players import AlphaZeroPlayer
 from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
@@ -69,7 +69,7 @@ class AlphaZeroTrainer:
             self.game = game # str: name of the game
         else:
             raise ValueError(f"Game '{game}' is not supported by AlphaZeroTrainer.")
-        self.config = None # dotdict: configuration parameters
+        self.config = None # Config object or from a subclass: configuration parameters
         self.board = None # Board object
         self.nn = None # PolicyValueNetwork object
         self.nn_twin = None # nn clone to use for specific training methods
@@ -81,31 +81,22 @@ class AlphaZeroTrainer:
     def __str__(self) -> str:
         return f"{self.__class__.__name__}{self.game.capitalize()}"
     
-    def load_json_config(self, json_config_file: str):
+    def load_config_from_json(self, json_config_file: str):
         """ Load the configuration from a JSON file. """
-        default_config = CONFIGS_REGISTER[self.game].to_dict()
-        with open(json_config_file, "r") as f:
-            json_config = json.load(f)
-        
-        # check if the configuration parameters are valid
-        for config_param in json_config.keys():
-            if not config_param in default_config:
-                raise ValueError(f"Unknown configuration parameter '{config_param}' for game {self.game.capitalize()}")
-        
-        # check if the configuration parameters are complete
-        for config_param in default_config:
-            if not config_param in json_config:
-                raise ValueError(f"Missing configuration parameter '{config_param}' for game {self.game.capitalize()}")
-
-        return dotdict(json_config)
+        if json_config_file is None: # load the default configuration
+            return CONFIGS_REGISTER[self.game]()
+        else: # create a config from the JSON file
+            with open(json_config_file, "r") as f:
+                json_config = json.load(f)
+            return CONFIGS_REGISTER[self.game](**json_config)
     
     def print(self, log: str):
         print(log) if self.verbose else None
 
-    def print_config(self, config: dotdict, verbose: bool = True):
+    def print_config(self, config: Config, verbose: bool = True):
         """ Print the configuration parameters. """
         if verbose:
-            for pname, value in config.items():
+            for pname, value in config.to_dict().items():
                 print(f"- {pname}: {value}")
     
     def get_training_time_estimation(self, json_config_file: str = None) -> float:
@@ -119,10 +110,7 @@ class AlphaZeroTrainer:
         """
 
         # load/init the configuration
-        if json_config_file is None: # load the default configuration
-            config = CONFIGS_REGISTER[self.game].to_dict()
-        else:
-            config = self.load_json_config(json_config_file)
+        config = self.load_config_from_json(json_config_file)
         if self.game != config.game:
             raise ValueError(f"Game '{self.game}' and game '{config.game}' in the configuration file do not match.")
 
@@ -281,58 +269,63 @@ class AlphaZeroTrainer:
         self.nn = self.nn_twin.clone()
         self.nn_twin = None
     
-    def save_player(self, model_name: str, model_path: str = None):
-        """ Save the trained neural network with the corresponding config file locally. """
-
-        model_path = os.path.join(DEFAULT_MODEL_PATH, model_name) if model_path is None else model_path
-        
-        # save the neural network weights
-        self.nn.save_model(model_name, model_path, verbose=False)
-
-        # save the config file (path already exists because save_model created it just before)
-        with open(os.path.join(model_path, "config.json"), "w") as f:
-            json.dump(self.config, f, indent=4)
-        
-        # save the loss values during training
-        with open(os.path.join(model_path, "loss.json"), "w") as f:
+    def save_player_pt(self, model_name: str, path: str = None):
+        """ Save the trained neural network. """
+        path = os.path.join(DEFAULT_MODEL_PATH, model_name) if path is None else path
+        Path(path).mkdir(parents=True, exist_ok=True)
+        self.nn.save_model(model_name, path, verbose=False)
+    
+    def save_player_config(self, model_name: str, path: str = None):
+        """ Save the trained neural network. """
+        path = os.path.join(DEFAULT_MODEL_PATH, model_name) if path is None else path
+        Path(path).mkdir(parents=True, exist_ok=True)
+        with open(os.path.join(path, "config.json"), "w") as f:
+            json.dump(self.config.to_dict(), f, indent=4)
+    
+    def save_player_loss(self, model_name: str, path: str = None):
+        """ Save the trained neural network. """
+        path = os.path.join(DEFAULT_MODEL_PATH, model_name) if path is None else path
+        Path(path).mkdir(parents=True, exist_ok=True)
+        with open(os.path.join(path, "loss.json"), "w") as f:
             json.dump(self.loss_values, f, indent=4)
 
     def train(
             self,
             json_config_file: str = None,
             experiment_name: str = None, 
-            save: bool = True, 
-            push_to_hub: bool = False, 
-            save_checkpoints: bool = False,
             verbose: bool = None
         ):
         """ Train the AlphaZero player for the specified game. """
 
+        experiment_name = experiment_name if experiment_name is not None else AlphaZeroTrainer.DEFAULT_EXP_NAME
+        self.verbose = verbose if verbose is not None else self.verbose
+
         # load/init the configuration
-        if json_config_file is None: # load the default configuration
-            self.config = CONFIGS_REGISTER[self.game].to_dict()
-        else:
-            self.config = self.load_json_config(json_config_file)
+        self.config = self.load_config_from_json(json_config_file)
         if self.game != self.config.game:
             raise ValueError(f"Game '{self.game}' and game '{self.config.game}' in the configuration file do not match.")
-        
-        experiment_name = experiment_name if experiment_name is not None else AlphaZeroTrainer.DEFAULT_EXP_NAME
-        save = save or push_to_hub # model must be saved locally before pushing to the hub
-        self.verbose = verbose if verbose is not None else self.verbose
+
+        # adjust flags for saving and pushing the results of the training
+        self.config.save_checkpoints = self.config.save_checkpoints or self.config.push_checkpoints # checkpoints must be saved before pushing to the hub
+        self.config.push = self.config.push or self.config.push_checkpoints # if checkpoints are pushed, the final model is pushed too
+        self.config.save = self.config.save or self.config.push or self.config.save_checkpoints # model must be saved locally before pushing to the hub
 
         # init the main objects
         self.print("[1] Initializing the Board, PolicyValueNetwork and Player...") 
-        self.board = BOARDS_REGISTER[self.game](config_dict=self.config)
-        self.nn = NETWORKS_REGISTER[self.game](config_dict=self.config)
+        self.board = BOARDS_REGISTER[self.game](config=self.config)
+        self.nn = NETWORKS_REGISTER[self.game](config=self.config)
         self.az_player = AlphaZeroPlayer(
             n_sim=self.config.simulations, 
             compute_time=self.config.compute_time, 
             nn=self.nn, 
             verbose=verbose
         )
-        self.loss_values = defaultdict(dict) # reset the loss values
+        self.loss_values = defaultdict(dict) # ensure that loss values are reset
+
+        # print the configuration and save it in the new model directory
         self.print("")
         self.print_config(self.config, self.verbose)
+        self.save_player_config(experiment_name)
 
         # training loop
         self.print("\n[2] Training...")
@@ -348,23 +341,29 @@ class AlphaZeroTrainer:
 
             # update the main network with the twin network
             self.update_network(iter_idx)
+            
+            # save loss values after each iteration
+            self.save_player_loss(experiment_name)
 
-            # save a checkpoint
-            if save_checkpoints:
-                chkpt_name = f"{experiment_name}-chkpt-{iter_idx+1}"
-                self.save_player(
-                    model_name=chkpt_name, 
-                    model_path=os.path.join(DEFAULT_MODEL_PATH, experiment_name, chkpt_name)
+            if self.config.save_checkpoints: # save checkpoint in experiment_name/checkpoint/ directory
+                self.save_player_pt(
+                    model_name=f"{experiment_name}-chkpt-{iter_idx+1}", 
+                    path=os.path.join(DEFAULT_MODEL_PATH, experiment_name, "checkpoints")
                 )
                 self.print(f"\n{self} checkpoint {iter_idx+1}/{self.config.iterations} successfully saved.")
         
-        if save:
-            self.save_player(experiment_name)
+        if self.config.save:
+            self.save_player_pt(experiment_name)
             self.print(f"\n[3] {self} successfully saved!")
         
-        if push_to_hub:
+        if self.config.push:
             self.print(f"\n[4] Pushing {self.az_player} to the Hugging Face Hub...\n")
-            push_model_to_hf_hub(model_name=experiment_name, verbose=self.verbose)
+            chkpts_files = {}
+            if self.config.push_checkpoints:
+                for iter_idx in range(self.config.iterations):
+                    chkpt_name = f"{experiment_name}-chkpt-{iter_idx+1}"
+                    chkpts_files[f"{chkpt_name}.pt"] = os.path.join(DEFAULT_MODEL_PATH, experiment_name, f"checkpoints/{chkpt_name}.pt")
+            push_model_to_hf_hub(model_name=experiment_name, additional_files=chkpts_files, verbose=self.verbose)
 
 
 def tests():
@@ -383,9 +382,6 @@ def main():
     trainer.train(
         json_config_file=None,
         experiment_name="alphazero-fake", 
-        save=True, 
-        push_to_hub=False,
-        save_checkpoints=True,
     )
 
 

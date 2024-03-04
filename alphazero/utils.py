@@ -140,7 +140,7 @@ def push_model_to_hf_hub(
         models_dir: str = None, 
         token: str = None,
         private: bool = True,
-        additional_files: list[str] = None,
+        additional_files: dict[str, str] = None,
         verbose: bool = False,
     ) -> None:
     """
@@ -150,7 +150,7 @@ def push_model_to_hf_hub(
         - models_dir: path to the local directory containing the model folder.
         - token: token to use to push the model to the HF Hub. If None, the token is set to the value of the env var DEFAULT_TOKEN_ENV_VAR_NAME if it exists else no token is used.
         - private: if True, the model will be private on the HF Hub.
-        - additional_files: list of files one wants to push to the HF Hub along with the model.
+        - additional_files: dict of files {filename: filepath} one wants to push to the HF Hub along with the model.
     """
 
     models_dir = DEFAULT_MODEL_PATH if models_dir is None else models_dir
@@ -164,14 +164,6 @@ def push_model_to_hf_hub(
         raise ValueError(f"Model file not found: {path_to_pt_file}")
     if not os.path.isfile(path_to_config_file):
         raise ValueError(f"Config file not found: {path_to_config_file}")
-    
-    # get the path to the additional files
-    additional_files = [] if additional_files is None else additional_files
-    add_files_dict = {}
-    for add_file in additional_files:
-        path_to_add_file = os.path.join(models_dir, model_name, add_file)
-        if not os.path.isfile(path_to_add_file):
-            raise ValueError(f"Additional file not found: {path_to_add_file}")
 
     # create the model repository on the HFhub
     repo_id = "/".join([author, model_name])
@@ -201,7 +193,8 @@ def push_model_to_hf_hub(
     )
 
     # push any additional files
-    for add_file, path_to_add_file in add_files_dict.items():
+    additional_files = {} if additional_files is None else additional_files
+    for add_file, path_to_add_file in additional_files.items():
         hfapi.upload_file(
             path_or_fileobj=path_to_add_file,
             path_in_repo=add_file,

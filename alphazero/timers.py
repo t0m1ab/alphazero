@@ -3,10 +3,9 @@ from time import time
 from tqdm import tqdm
 import torch
 
-from alphazero.utils import dotdict
+from alphazero.base import Config
 from alphazero.players import AlphaZeroPlayer
 from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER
-from alphazero.games.othello import OthelloBoard, OthelloNet
 
 
 class SelfPlayTimer():
@@ -14,10 +13,10 @@ class SelfPlayTimer():
     Timer to measure the average time it takes to complete a self-play game.
     """
 
-    def __init__(self, game: str, config: dotdict = None):
+    def __init__(self, game: str, config: Config = None):
 
         # load default config
-        self.config = CONFIGS_REGISTER[game].to_dict() if config is None else config
+        self.config = CONFIGS_REGISTER[game]() if config is None else config
 
         # define Board, PolicyValueNetwork and Player
         self.board = BOARDS_REGISTER[game](n=self.config.board_size)
@@ -81,10 +80,10 @@ class NeuralTimer():
     Timer to measure the average time it takes to perform optimization of a neural network (backprop + optimizer).
     """
 
-    def __init__(self, game: str, config: dotdict = None):
+    def __init__(self, game: str, config: Config = None):
 
         # load default config
-        self.config = CONFIGS_REGISTER[game].to_dict() if config is None else config
+        self.config = CONFIGS_REGISTER[game]() if config is None else config
 
         # define Board, PolicyValueNetwork and Player
         self.board = BOARDS_REGISTER[game](n=self.config.board_size)

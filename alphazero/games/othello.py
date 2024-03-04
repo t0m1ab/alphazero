@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from aenum import Enum, NoAlias
+from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -9,24 +10,29 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from alphazero.base import Action, Board, PolicyValueNetwork, Config
-from alphazero.utils import dotdict
 
 
+@dataclass
 class OthelloConfig(Config):
     """ Configuration for AlphaOthelloZero training. Any config file must define exactly all values listed below. """
     # GAME settings
-    GAME: str = "othello"
-    BOARD_SIZE: int = 6 # (6)
+    game: str = "othello"
+    board_size: int = 6 # (6)
     # PLAYER settings
-    SIMULATIONS: int = 100 # None to use compute_time # (100)
-    COMPUTE_TIME: float = None # None to use n_sim # (None)
+    simulations: int = 50 # None to use compute_time # (100)
+    compute_time: float = None # None to use simulations # (None)
     # TRAINING settings
-    ITERATIONS: int = 2 # (30)
-    EPISODES: int = 10 # (100)
-    EPOCHS: int = 5 # (10)
-    BATCH_SIZE: int = 64 # (64)
-    LEARNING_RATE: float = 0.001 # (0.001)
-    DEVICE:str = "cpu"
+    iterations: int = 2 # (30)
+    episodes: int = 10 # (100)
+    epochs: int = 5 # (10)
+    batch_size: int = 64 # (64)
+    learning_rate: float = 0.001 # (0.001)
+    device: str = "cpu"
+    # SAVE settings
+    save: bool = False
+    push: bool = False
+    save_checkpoints: bool = True
+    push_checkpoints: bool = False
 
 
 class OthelloBoard(Board):
@@ -39,8 +45,8 @@ class OthelloBoard(Board):
         * 0 if the cell is empty.
     """
 
+    CONFIG = OthelloConfig
     DIRECTIONS = [(1,1), (1,0), (1,-1), (0,-1), (-1,-1), (-1,0), (-1,1), (0,1)]
-    
     COLORS = {-1: "white", 0: "green", 1: "black"}
 
     def __init__(
@@ -49,12 +55,12 @@ class OthelloBoard(Board):
             grid: np.ndarray = None, 
             player: int = 1,
             display_dir: str = None,
-            config_dict: dotdict = None,
+            config: Config = None,
         ):
         super().__init__(display_dir)
 
-        if config_dict is not None:
-            self.__init_from_config(config_dict)
+        if config is not None:
+            self.__init_from_config(config)
         else:
             self.n = n
             self.grid = grid if grid is not None else self.__get_init_board()
@@ -65,9 +71,9 @@ class OthelloBoard(Board):
         self.pass_move = self.get_board_shape() # pass is allowed in Othello only when a player has no legal move
         self.game_name = "othello"
     
-    def __init_from_config(self, config_dict: dotdict) -> None:
-        """ Initialize the Othello board from a configuration given in a dotdict. """
-        self.n = config_dict.board_size
+    def __init_from_config(self, config: Config) -> None:
+        """ Initialize the Othello board from a configuration given in a Config object. """
+        self.n = config.board_size
         self.grid = self.__get_init_board()
         self.player = 1
     
@@ -257,18 +263,20 @@ class OthelloNet(PolicyValueNetwork):
     The network also outputs a policy p representing the probability distribution of the next move to play.
     """
 
+    CONFIG = OthelloConfig
+
     def __init__(
             self, 
             n: int = None, 
             device: str = None, 
-            config_dict: dotdict = None
+            config: Config = None
         ):
-        """ If <config_dict> is provided, the value of <n> will be automatically overwritten. """
+        """ If <config> is provided, the value of <n> will be automatically overwritten. """
         super().__init__()
 
         # parametrized values
-        if config_dict is not None:
-            self.__init_from_config(config_dict)
+        if config is not None:
+            self.__init_from_config(config)
         else:
             if n is None:
                 raise ValueError("The board size must be a positive and even integer like 4, 6 or 8.")
@@ -301,10 +309,10 @@ class OthelloNet(PolicyValueNetwork):
         self.fc_probs = nn.Linear(512, self.action_size, device=self.device)
         self.fc_value = nn.Linear(512, 1, device=self.device) 
 
-    def __init_from_config(self, config_dict: dotdict) -> None:
-        """ Initialize the network from a config given in a dotdict. """
-        self.n = config_dict.board_size
-        self.device = PolicyValueNetwork.get_torch_device(config_dict.device) 
+    def __init_from_config(self, config: Config) -> None:
+        """ Initialize the network from a config given in a Config object. """
+        self.n = config.board_size
+        self.device = PolicyValueNetwork.get_torch_device(config.device) 
 
     def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
         """ Forward through the network and outputs (logits of probabilitites, value). """
