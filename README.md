@@ -28,12 +28,13 @@ alphazero --help
 alphazero --download
 ```
 ```python
-python alphazero/utils.py
+python alphazero/download.py
 ``` 
 All models and configuration files will be stored in a `models/` folder by default when loading or training a player.
 
 ## 1 - Files
 
+### alphazero/
 * `base`: implement parent classes such as *Board*, *Player*, *PolicyValueNetwork*...
 * `players.py`: implement different game strategies
 * `mcts.py`: implement Monte Carlo Tree Search
@@ -44,12 +45,14 @@ All models and configuration files will be stored in a `models/` folder by defau
 * `timers.py`: define timers to perform alphazero training time estimation
 * `utils.py`: utility functions
 * `tests.py`: contains various tests that can be run to check the implementation
+* `download.py`: run to download alphazero networks stored on a HuggingFace Hub
+* `run.sh`: run to launch a training
 
-### games/
+### alphazero/games/
 * `registers.py`: define configurations, boards and networks mapping for each game from their name
 * `othello.py`: implementation of the Othello environment, game config and neural network for AlphaZero
+* `tictactoe.py`: TicTacToeNet TODO
 * `connect4.py`: TODO
-* `tictactoe.py`: TODO
 
 ### docs/
 * `help.txt`: general informations
@@ -57,9 +60,11 @@ All models and configuration files will be stored in a `models/` folder by defau
 ### figures/
 * `othello_board_8x8_init.png`: example of Othello 8x8 board display
 
-<img src='./alphazero/figures/othello_board_8x8_init.png' width='300'>
+<img src='./figures/othello_board_8x8_init.png' width='300'>
 
 ## 2 - Demo
+
+Go in the code folder `alphazero/` to execute any of the following commands.
 
 ### 2.1 - Play against MCTSPlayer
 
@@ -67,7 +72,7 @@ All models and configuration files will be stored in a `models/` folder by defau
 python game_ui.py
 ```
 
-Change code in `game_ui.py` to modify the machine player and/or the game settings. The state of the board will be automatically saved as a PNG file in `outputs/` and overwrite itself after each move.
+The state of the board will be automatically saved as a PNG file in `outputs/` and overwrite itself after each move.
 
 ### 2.2 - Compare machine players
 
@@ -75,12 +80,17 @@ Change code in `game_ui.py` to modify the machine player and/or the game setting
 python contests.py
 ```
 
-Change code in `contests.py` to modify the machine players and/or the game settings.
+Change the contest function called in `contests.py` to modify the machine players and/or the game settings.
 
 ### 2.3 - Train an AlphaZero player
 
 ```bash
-python trainers.py
+bash run.sh
 ```
 
-Change the game in the main function of `trainers.py` and the training configuration in the associated `games/<game_name>.py` file.
+Use the options of `trainer.py` in `run.sh` to change the name of the experiment, the game or the configuration.
+
+Save the default configurations as JSON files with the following command:
+```bash
+python trainers.py -f
+```

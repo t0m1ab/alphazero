@@ -2,13 +2,13 @@ import sys
 import os
 
 import alphazero
+from alphazero.utils import DEFAULT_DOCS_PATH
 from alphazero.tests import run_tests
 from alphazero.utils import download_all_models_from_hf_hub
 
-
-def print_help(help_msg_relative_path: str = "docs/help.txt"):
+def print_help():
     """ Print the help message for the cs3arl package """
-    filepath = os.path.join(alphazero.__path__[0], help_msg_relative_path)
+    filepath = os.path.join(DEFAULT_DOCS_PATH, "help.txt")
     if not os.path.isfile(filepath):
         raise FileNotFoundError(f"File not found: {filepath}")
     with open(filepath, "r") as file:
@@ -31,7 +31,10 @@ def main():
         download_all_models_from_hf_hub(verbose=True)
 
     else:
-        print("command 'alphazero' is working: try --help or --test")
+        print("Available commands:")
+        print("--help | -h : print help docs")
+        print("--test | -t : run simple tests to check the package")
+        print("--download | -d : download all models from the HF Hub linked to the default credentials")
 
 
 if __name__ == "__main__":

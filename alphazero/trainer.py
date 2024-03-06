@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import argparse
 import json
 import numpy as np
 import torch
@@ -9,7 +10,7 @@ from datetime import timedelta
 
 import alphazero
 from alphazero.base import Config
-from alphazero.utils import push_model_to_hf_hub, DEFAULT_MODELS_PATH
+from alphazero.utils import dotdict, push_model_to_hf_hub, DEFAULT_CONFIGS_PATH, DEFAULT_MODELS_PATH
 from alphazero.players import AlphaZeroPlayer
 from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
@@ -64,42 +65,45 @@ class AlphaZeroTrainer:
 
     DEFAULT_EXP_NAME = "alphazero-undefined"
 
-    def __init__(self, game: str, verbose: bool = False):
-        if game in CONFIGS_REGISTER:
-            self.game = game # str: name of the game
-        else:
-            raise ValueError(f"Game '{game}' is not supported by AlphaZeroTrainer.")
-        self.config = None # Config object or from a subclass: configuration parameters
-        self.board = None # Board object
-        self.nn = None # PolicyValueNetwork object
-        self.nn_twin = None # nn clone to use for specific training methods
-        self.az_player = None # AlphaZeroPlayer object 
-        self.memory = None # list storing normalize Sample objects to use for training the nn
-        self.verbose = verbose
+    def __init__(self, verbose: bool = False):
+        self.game = None # str: name of the game (ex: "othello", "tictactoe"...)
+        self.config = None # Config: configuration parameters
+        self.board = None # Board
+        self.nn = None # PolicyValueNetwork
+        self.nn_twin = None # PolicyValueNetwork object: nn clone to use for specific training methods
+        self.az_player = None # AlphaZeroPlayer 
+        self.memory = None # list[Sample]: list storing normalize samples to use nn training
+        self.verbose = verbose # bool
         self.loss_values = defaultdict(dict) # store loss values for each iteration and epoch
     
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}{self.game.capitalize()}"
-    
-    def load_config_from_json(self, json_config_file: str):
-        """ Load the configuration from a JSON file. """
-        if json_config_file is None: # load the default configuration
-            return CONFIGS_REGISTER[self.game]()
-        else: # create a config from the JSON file
-            with open(json_config_file, "r") as f:
-                json_config = json.load(f)
-            return CONFIGS_REGISTER[self.game](**json_config)
-    
+        if self.game is not None:
+            return f"{self.__class__.__name__}{self.game.capitalize()}"
+        else:
+            return f"{self.__class__.__name__}"
+        
     def print(self, log: str):
         print(log) if self.verbose else None
 
-    def print_config(self, config: Config, verbose: bool = True):
+    @staticmethod
+    def print_config(config: Config, verbose: bool = True):
         """ Print the configuration parameters. """
         if verbose:
             for pname, value in config.to_dict().items():
                 print(f"- {pname}: {value}")
     
-    def get_training_time_estimation(self, json_config_file: str = None) -> float:
+    @staticmethod
+    def load_config_from_json(game: str, json_config_file: str):
+        """ Load the configuration from a JSON file. """
+        if json_config_file is None: # load the default configuration
+            return CONFIGS_REGISTER[game]()
+        else: # create a config from the JSON file
+            with open(json_config_file, "r") as f:
+                json_config = dotdict(json.load(f))
+            return CONFIGS_REGISTER[json_config.game](**json_config)
+
+    @staticmethod
+    def get_training_time_estimation(game: str, json_config_file: str = None) -> float:
         """ 
         Return the estimated time for the training. 
         Use SelfPlayTimer to estimate duration of an episode of the game.
@@ -110,18 +114,18 @@ class AlphaZeroTrainer:
         """
 
         # load/init the configuration
-        config = self.load_config_from_json(json_config_file)
-        if self.game != config.game:
-            raise ValueError(f"Game '{self.game}' and game '{config.game}' in the configuration file do not match.")
-
-        self.print_config(config)
+        config = AlphaZeroTrainer.load_config_from_json(game, json_config_file)
+        game = game if game is not None else config.game
+        if game is not None and game != config.game:
+            raise ValueError(f"Game '{game}' and game '{config.game}' in the configuration file do not match.")
+        AlphaZeroTrainer.print_config(config)
 
         # compute episode duration approximations
-        spt = SelfPlayTimer(game=self.game, config=config)
+        spt = SelfPlayTimer(game, config)
         episode_duration_sec, episode_duration_steps = spt.timeit(n_episodes=10)
 
         # compute batch optimization duration approximation
-        nt = NeuralTimer(game=self.game, config=config)
+        nt = NeuralTimer(game, config)
         batch_optim_duration = nt.timeit(n_batches=100)
         
         # compute duration estimations for all steps
@@ -291,20 +295,23 @@ class AlphaZeroTrainer:
 
     def train(
             self,
-            json_config_file: str = None,
+            game: str = None,
             experiment_name: str = None, 
+            json_config_file: str = None,
             verbose: bool = None
         ):
         """ Train the AlphaZero player for the specified game. """
 
+        # load/init the configuration
+        if game is None and json_config_file is None:
+            raise ValueError("The name of the game or a JSON configuration file must be provided to launch a training.")
+        self.config = AlphaZeroTrainer.load_config_from_json(game, json_config_file) # will use either self.game or the config file
+        self.game = game if game is not None else self.config.game
+        if self.game is not None and self.game != self.config.game:
+            raise ValueError(f"Game '{game}' and game '{self.config.game}' in the configuration file do not match.")
         experiment_name = experiment_name if experiment_name is not None else AlphaZeroTrainer.DEFAULT_EXP_NAME
         self.verbose = verbose if verbose is not None else self.verbose
-
-        # load/init the configuration
-        self.config = self.load_config_from_json(json_config_file)
-        if self.game != self.config.game:
-            raise ValueError(f"Game '{self.game}' and game '{self.config.game}' in the configuration file do not match.")
-
+        
         # adjust flags for saving and pushing the results of the training
         self.config.save_checkpoints = self.config.save_checkpoints or self.config.push_checkpoints # checkpoints must be saved before pushing to the hub
         self.config.push = self.config.push or self.config.push_checkpoints # if checkpoints are pushed, the final model is pushed too
@@ -324,7 +331,7 @@ class AlphaZeroTrainer:
 
         # print the configuration and save it in the new model directory
         self.print("")
-        self.print_config(self.config, self.verbose)
+        AlphaZeroTrainer.print_config(self.config, self.verbose)
         self.save_player_config(experiment_name)
 
         # training loop
@@ -367,22 +374,86 @@ class AlphaZeroTrainer:
 
 
 def tests():
+    trainer = AlphaZeroTrainer()
+    print(f"{trainer} trainer created successfully!")
 
-    for game in CONFIGS_REGISTER:
-        trainer = AlphaZeroTrainer(game=game)
-        print(f"{trainer} trainer created successfully!")
+
+def freeze_config(game: str = None):
+    """ Freeze the configuration parameters for <game> or for all games if <game> is None. """
+    games = [game] if game is not None else CONFIGS_REGISTER.keys()
+    for game in games:
+        config = AlphaZeroTrainer.load_config_from_json(game, json_config_file=None)
+        with open(os.path.join(DEFAULT_CONFIGS_PATH, f"{game}.json"), "w") as f:
+            json.dump(config.to_dict(), f, indent=4)
 
 
 def main():
 
-    trainer = AlphaZeroTrainer(game="othello", verbose=True)
+    DEFAULT_GAME = None
+    DEFAULT_EXP_NAME = "alphazero-fake"
 
-    # trainer.get_training_time_estimation()
-
-    trainer.train(
-        json_config_file=None,
-        experiment_name="alphazero-fake", 
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-g",
+        "--game",
+        dest="game",
+        type=str,
+        default=DEFAULT_GAME,
+        help="Name of the game to train on (ex: 'othello', 'tictactoe'...).",
     )
+    parser.add_argument(
+        "-e",
+        "--experiment-name",
+        dest="experiment_name",
+        type=str,
+        default=DEFAULT_EXP_NAME,
+        help="Name of the experiment/trained AlphaZero.",
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        dest="json_config_file",
+        type=str,
+        default=None,
+        help="Path to a JSON config file for the training.",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        dest="quiet",
+        action="store_true",
+        default=False,
+        help="If True then verbose is set to False during download.",
+    )
+    parser.add_argument(
+        "-x",
+        "--estimate",
+        dest="estimate",
+        action="store_true",
+        default=False,
+        help="If True then only perform training time estimation.",
+    )
+    parser.add_argument(
+        "-f",
+        "--freeze",
+        dest="freeze",
+        action="store_true",
+        default=False,
+        help="If True then only save all game configurations in DEFAULT_CONFIGS_PATH.",
+    )
+    args = parser.parse_args()
+
+    if args.estimate:
+        AlphaZeroTrainer.get_training_time_estimation(args.game, args.json_config_file)
+    elif args.freeze:
+        freeze_config(game=args.game)
+    else:
+        trainer = AlphaZeroTrainer(verbose=not(args.quiet))
+        trainer.train(
+            game=args.game,
+            json_config_file=args.json_config_file,
+            experiment_name=args.experiment_name,
+        )
 
 
 if __name__ == "__main__":

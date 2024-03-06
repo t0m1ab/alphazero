@@ -7,8 +7,11 @@ from huggingface_hub import HfApi, hf_hub_download
 import alphazero
 
 ALPHAZERO_CODE_PATH = alphazero.__path__[0]
+DEFAULT_CONFIGS_PATH = os.path.join(ALPHAZERO_CODE_PATH, "configs/")
 DEFAULT_MODELS_PATH = os.path.join(str(Path(ALPHAZERO_CODE_PATH).parent), "models/")
 DEFAULT_OUTPUTS_PATH = os.path.join(str(Path(ALPHAZERO_CODE_PATH).parent), "outputs/")
+DEFAULT_DOCS_PATH = os.path.join(str(Path(ALPHAZERO_CODE_PATH).parent), "docs/")
+DEFAULT_FIGURES_PATH = os.path.join(str(Path(ALPHAZERO_CODE_PATH).parent), "figures/")
 
 DEFAULT_USER_HF = "t0m1ab"
 DEFAULT_TOKEN_ENV_VAR_NAME = "HF_HUB_TOKEN"
@@ -105,7 +108,7 @@ def download_model_from_hf_hub(
     )
 
     if verbose:
-        print(f"Model {model_id} downloaded in: {models_dir}")
+        print(f"- Model {model_id} downloaded in: {models_dir}")
 
 
 def download_all_models_from_hf_hub(
@@ -211,16 +214,15 @@ def push_model_to_hf_hub(
         print(f"Model '{repo_id}' was sucessfully pushed to the HuggingFace Hub!")
 
 
-def tests():
-    # test fair_max (at least it is a max operator)
-    elements = [1, 2, 3, 3, 3, -4, -5]
-    assert fair_max(elements) == 3
-
-
 def main():
+    # test fair_max (at least it is a max operator)
+    elements = np.random.randn(100)
+    assert fair_max(elements) == np.max(elements)
+
+    # HF Hub API functions
     # print(list_models_from_hf_hub())
     # push_model_to_hf_hub(model_name="alphazero-fake", verbose=True)
-    download_all_models_from_hf_hub(verbose=True)
+    # download_all_models_from_hf_hub(verbose=True)
 
 
 if __name__ == "__main__":

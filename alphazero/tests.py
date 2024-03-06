@@ -28,8 +28,8 @@ def test_object_creation():
 def run_tests():
     """ Run all tests for the package. """
 
-    from alphazero.utils import tests as utils_tests
-    utils_tests() # test utils
+    from alphazero.utils import main as utils_main
+    utils_main() # test utils
 
     test_object_creation()
 

@@ -220,7 +220,7 @@ class TicTacToeNet(PolicyValueNetwork):
 
     CONFIG = TicTacToeConfig
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
         raise NotImplementedError("TicTacToeNet is not implemented yet.")
 
