@@ -11,7 +11,7 @@ from torch import nn
 
 # base.py is the first file to be imported so it cannot rely on any other file except utils.py
 import alphazero
-from alphazero.utils import dotdict, remove_ext, DEFAULT_MODEL_PATH
+from alphazero.utils import dotdict, remove_ext, DEFAULT_MODELS_PATH, DEFAULT_OUTPUTS_PATH
 
 
 class Action():
@@ -64,10 +64,9 @@ class Board():
     """
 
     CONFIG = Config
-    DEFAULT_DISPLAY_DIR = os.path.join(alphazero.__path__[0], "outputs/")
 
     def __init__(self, display_dir: str = None):
-        self.display_dir = display_dir if display_dir is not None else Board.DEFAULT_DISPLAY_DIR
+        self.display_dir = display_dir if display_dir is not None else DEFAULT_OUTPUTS_PATH
         self.game_name = None # str: name of the game
         self.grid = None # np.ndarray: the board representation (2D array filled with 0s, 1s and -1s)
         self.player = None # int: id of the player that needs to play (1 or -1)
@@ -211,7 +210,7 @@ class PolicyValueNetwork(nn.Module):
         """ Saves the weights of the model to a '<model_name>.pt' file. """
         model_name = remove_ext(model_name)
         # folder containing the model and the config
-        model_path = os.path.join(DEFAULT_MODEL_PATH, model_name) if model_path is None else model_path
+        model_path = os.path.join(DEFAULT_MODELS_PATH, model_name) if model_path is None else model_path
         
         # save model weights
         Path(model_path).mkdir(parents=True, exist_ok=True)
@@ -222,7 +221,7 @@ class PolicyValueNetwork(nn.Module):
     @classmethod
     def from_pretrained(cls, model_name: str, models_path: str = None, verbose: bool = False) -> "PolicyValueNetwork":
         """ Loads the model from using a 'config.json' file and '<model_name>.pt' weights. """
-        models_path = DEFAULT_MODEL_PATH if models_path is None else models_path
+        models_path = DEFAULT_MODELS_PATH if models_path is None else models_path
         model_name = remove_ext(model_name)
         model_dir = os.path.join(models_path, model_name) # folder containing the model and the config
 

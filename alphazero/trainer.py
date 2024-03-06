@@ -9,7 +9,7 @@ from datetime import timedelta
 
 import alphazero
 from alphazero.base import Config
-from alphazero.utils import push_model_to_hf_hub, DEFAULT_MODEL_PATH
+from alphazero.utils import push_model_to_hf_hub, DEFAULT_MODELS_PATH
 from alphazero.players import AlphaZeroPlayer
 from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
@@ -271,20 +271,20 @@ class AlphaZeroTrainer:
     
     def save_player_pt(self, model_name: str, path: str = None):
         """ Save the trained neural network. """
-        path = os.path.join(DEFAULT_MODEL_PATH, model_name) if path is None else path
+        path = os.path.join(DEFAULT_MODELS_PATH, model_name) if path is None else path
         Path(path).mkdir(parents=True, exist_ok=True)
         self.nn.save_model(model_name, path, verbose=False)
     
     def save_player_config(self, model_name: str, path: str = None):
         """ Save the trained neural network. """
-        path = os.path.join(DEFAULT_MODEL_PATH, model_name) if path is None else path
+        path = os.path.join(DEFAULT_MODELS_PATH, model_name) if path is None else path
         Path(path).mkdir(parents=True, exist_ok=True)
         with open(os.path.join(path, "config.json"), "w") as f:
             json.dump(self.config.to_dict(), f, indent=4)
     
     def save_player_loss(self, model_name: str, path: str = None):
         """ Save the trained neural network. """
-        path = os.path.join(DEFAULT_MODEL_PATH, model_name) if path is None else path
+        path = os.path.join(DEFAULT_MODELS_PATH, model_name) if path is None else path
         Path(path).mkdir(parents=True, exist_ok=True)
         with open(os.path.join(path, "loss.json"), "w") as f:
             json.dump(self.loss_values, f, indent=4)
@@ -348,7 +348,7 @@ class AlphaZeroTrainer:
             if self.config.save_checkpoints: # save checkpoint in experiment_name/checkpoint/ directory
                 self.save_player_pt(
                     model_name=f"{experiment_name}-chkpt-{iter_idx+1}", 
-                    path=os.path.join(DEFAULT_MODEL_PATH, experiment_name, "checkpoints")
+                    path=os.path.join(DEFAULT_MODELS_PATH, experiment_name, "checkpoints")
                 )
                 self.print(f"\n{self} checkpoint {iter_idx+1}/{self.config.iterations} successfully saved.")
         
@@ -362,7 +362,7 @@ class AlphaZeroTrainer:
             if self.config.push_checkpoints:
                 for iter_idx in range(self.config.iterations):
                     chkpt_name = f"{experiment_name}-chkpt-{iter_idx+1}"
-                    chkpts_files[f"{chkpt_name}.pt"] = os.path.join(DEFAULT_MODEL_PATH, experiment_name, f"checkpoints/{chkpt_name}.pt")
+                    chkpts_files[f"{chkpt_name}.pt"] = os.path.join(DEFAULT_MODELS_PATH, experiment_name, f"checkpoints/{chkpt_name}.pt")
             push_model_to_hf_hub(model_name=experiment_name, additional_files=chkpts_files, verbose=self.verbose)
 
 

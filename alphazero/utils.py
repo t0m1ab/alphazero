@@ -1,12 +1,16 @@
 import os
+from pathlib import Path
 from tqdm import tqdm
 import numpy as np
 from huggingface_hub import HfApi, hf_hub_download
 
 import alphazero
 
+ALPHAZERO_CODE_PATH = alphazero.__path__[0]
+DEFAULT_MODELS_PATH = os.path.join(str(Path(ALPHAZERO_CODE_PATH).parent), "models/")
+DEFAULT_OUTPUTS_PATH = os.path.join(str(Path(ALPHAZERO_CODE_PATH).parent), "outputs/")
+
 DEFAULT_USER_HF = "t0m1ab"
-DEFAULT_MODEL_PATH = os.path.join(alphazero.__path__[0], "models/")
 DEFAULT_TOKEN_ENV_VAR_NAME = "HF_HUB_TOKEN"
 
 
@@ -79,7 +83,7 @@ def download_model_from_hf_hub(
     if model_id not in model_ids:
         raise ValueError(f"Model {model_id} not found on the HuggingFace Hub...")
 
-    models_dir = DEFAULT_MODEL_PATH if models_dir is None else models_dir
+    models_dir = DEFAULT_MODELS_PATH if models_dir is None else models_dir
     model_name = model_id.split("/")[-1]
 
     # download the model weights
@@ -153,7 +157,7 @@ def push_model_to_hf_hub(
         - additional_files: dict of files {filename: filepath} one wants to push to the HF Hub along with the model.
     """
 
-    models_dir = DEFAULT_MODEL_PATH if models_dir is None else models_dir
+    models_dir = DEFAULT_MODELS_PATH if models_dir is None else models_dir
     author = DEFAULT_USER_HF if author is None else author
     token = get_hf_token(token)
 
