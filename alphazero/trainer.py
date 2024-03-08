@@ -381,6 +381,7 @@ def tests():
 def freeze_config(game: str = None):
     """ Freeze the configuration parameters for <game> or for all games if <game> is None. """
     games = [game] if game is not None else CONFIGS_REGISTER.keys()
+    Path(DEFAULT_CONFIGS_PATH).mkdir(parents=True, exist_ok=True)
     for game in games:
         config = AlphaZeroTrainer.load_config_from_json(game, json_config_file=None)
         with open(os.path.join(DEFAULT_CONFIGS_PATH, f"{game}.json"), "w") as f:
