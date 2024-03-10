@@ -182,7 +182,8 @@ class MCT():
             # node.Q is the value of the action that led to node
             # so if the player that needs to play from node is the winner, one must not try to get to node position again
             # that means that node.Q must be penalized (-1) when player_id is the winner
-            reward = 0 if player_id == outcome else 1
+            reward = -1 if player_id == outcome else 1
+            # reward = 0 if player_id == outcome else 1 ### ALTERNATIVE UPDATE BUT WEAKER
         elif self.eval_method == TreeEval.NEURAL:
             reward = -1 if player_id == outcome else 1
         
@@ -193,7 +194,8 @@ class MCT():
             if draw:
                 reward = 0
             elif self.eval_method == TreeEval.ROLLOUT:
-                reward = 1 - reward # alterate the increment of the win count (between 0 and 1) as we go up in the tree
+                reward = -reward # alterate the increment of the win count as we go up in the tree
+                # reward = 1 - reward ### ALTERNATIVE UPDATE BUT WEAKER
             elif self.eval_method == TreeEval.NEURAL:
                 reward = -reward
     
