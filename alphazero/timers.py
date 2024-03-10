@@ -19,8 +19,8 @@ class SelfPlayTimer():
         self.config = CONFIGS_REGISTER[game]() if config is None else config
 
         # define Board, PolicyValueNetwork and Player
-        self.board = BOARDS_REGISTER[game](n=self.config.board_size)
-        self.nn = NETWORKS_REGISTER[game](n=self.config.board_size, device=self.config.device)
+        self.board = BOARDS_REGISTER[game](config=self.config)
+        self.nn = NETWORKS_REGISTER[game](config=self.config, device=self.config.device)
         self.az_player = AlphaZeroPlayer(
             n_sim=self.config.simulations, 
             compute_time=self.config.compute_time, 
@@ -86,17 +86,26 @@ class NeuralTimer():
         self.config = CONFIGS_REGISTER[game]() if config is None else config
 
         # define Board, PolicyValueNetwork and Player
-        self.board = BOARDS_REGISTER[game](n=self.config.board_size)
-        self.nn = NETWORKS_REGISTER[game](n=self.config.board_size, device=self.config.device)
+        self.board = BOARDS_REGISTER[game](config=self.config)
+        self.nn = NETWORKS_REGISTER[game](config=self.config, device=self.config.device)
     
     def get_fake_batch(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """ Create a fake batch of data for the neural network. """
 
-        input = torch.randn(
-            self.config.batch_size, 
-            self.config.board_size, 
-            self.config.board_size
-        ).to(self.config.device)
+        if hasattr(self.config, "board_size"):
+            input = torch.randn(
+                self.config.batch_size, 
+                self.config.board_size, 
+                self.config.board_size
+            ).to(self.config.device)
+        elif hasattr(self.config, "board_width") and hasattr(self.config, "board_height"):
+            input = torch.randn(
+                self.config.batch_size, 
+                self.config.board_height,
+                self.config.board_width
+            ).to(self.config.device)
+        else:
+            raise AttributeError("Board size/width/height not found in the config...")
 
         pi = torch.randn(
             self.config.batch_size, 

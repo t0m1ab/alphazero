@@ -209,8 +209,15 @@ class AlphaZeroTrainer:
         indexes = indexes[:n_batches*self.config.batch_size].reshape(n_batches, self.config.batch_size)
 
         for batch_indexes in indexes:
-
-            input_batch = np.zeros((self.config.batch_size, self.config.board_size, self.config.board_size))
+            
+            if hasattr(self.config, "board_size"):
+                input_batch = np.zeros((self.config.batch_size, self.config.board_size, self.config.board_size))
+            elif hasattr(self.config, "board_width") and hasattr(self.config, "board_height"):
+                input_batch = np.zeros((self.config.batch_size, self.config.board_height, self.config.board_width))
+            else:
+                raise AttributeError("Board size/width/height not found in the config...")
+    
+            # input_batch = np.zeros((self.config.batch_size, self.config.board_size, self.config.board_size))
             pi_batch = np.zeros((self.config.batch_size, self.board.get_action_size()))
             outcome_batch = np.zeros((self.config.batch_size, 1))
 

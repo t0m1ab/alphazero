@@ -16,7 +16,8 @@ class HumanPlayer(Player):
         super().__init__(verbose=verbose)
         if not game in MOVE_FORMATS_REGISTER: # self.move_format set to MoveFormat.ROW_COL by default
             self.move_format = MoveFormat.ROW_COL
-        self.move_format = MOVE_FORMATS_REGISTER[game]
+        else:
+            self.move_format = MOVE_FORMATS_REGISTER[game]
     
     def __parse_input(self, input: str) -> tuple[int,int]:
         """ 
