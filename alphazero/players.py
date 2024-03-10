@@ -1,9 +1,10 @@
 import numpy as np
 from time import sleep
 
-from alphazero.base import Action, Board, Player, PolicyValueNetwork
-from alphazero.mcts import MCT
+from alphazero.base import Action, Board, Player, PolicyValueNetwork, MoveFormat
 from alphazero.utils import fair_max
+from alphazero.mcts import MCT
+from alphazero.games.registers import MOVE_FORMATS_REGISTER
 
 
 class HumanPlayer(Player):
@@ -11,25 +12,44 @@ class HumanPlayer(Player):
     Player asking the user to choose the move to play.
     """
 
-    def __init__(self, verbose: bool = False) -> None:
+    def __init__(self, game: str = None, verbose: bool = False) -> None:
         super().__init__(verbose=verbose)
+        if not game in MOVE_FORMATS_REGISTER: # self.move_format set to MoveFormat.ROW_COL by default
+            self.move_format = MoveFormat.ROW_COL
+        self.move_format = MOVE_FORMATS_REGISTER[game]
     
     def __parse_input(self, input: str) -> tuple[int,int]:
         """ 
         Parse the input string asked in get_move() to extract the move. 
         HumanPlayer moves should be entered in the format 'row col' or 'row,col' or 'row-col' (e.g. '3 4').
         """
-        if len(input) != 3: # error
-            return None
+        if self.move_format == MoveFormat.ROW_COL: # coordinates of the cell must be given
+            if len(input) != 3: # error
+                return None
+            else:
+                row = input[0]
+                sep = input[1]
+                col = input[2]
+                if sep not in [" ", ",", "-"]: # allowed separators
+                    return None
+                if not col.isdigit() or not row.isdigit():
+                    return None
+                return (int(row), int(col))
+            
+        elif self.move_format == MoveFormat.COL: # only the coordinate of the column must be given
+            if not input.isdigit(): # error
+                return None
+            else:
+                return int(input)
+            
+        elif self.move_format == MoveFormat.ROW: # only the coordinate of the row must be given
+            if not input.isdigit(): # error
+                return None
+            else:
+                return int(input)
+            
         else:
-            row = input[0]
-            sep = input[1]
-            col = input[2]
-            if sep not in [" ", ",", "-"]: # allowed separators
-                return None
-            if not col.isdigit() or not row.isdigit():
-                return None
-            return (int(row), int(col))
+            raise ValueError(f"Unknown move format {self.move_format}...")
     
     def get_move(self, board: Board, temp: float = None) -> Action:
 

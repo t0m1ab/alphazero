@@ -21,6 +21,17 @@ class Action():
     pass
 
 
+class MoveFormat(Enum):
+    """ Enum to indicate the type of move format required to indicate which move a player wants to play. """
+    ROW_COL = "row_col"
+    ROW = "row"
+    COL = "col"
+
+    @classmethod
+    def to_dict(cls):
+        return {x.value: x for x in cls}
+
+
 class TreeEval(Enum):
     """ Enum to indicate the type of evaluation used for MCTS. """
     ROLLOUT = "rollout"
