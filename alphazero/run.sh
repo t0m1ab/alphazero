@@ -10,7 +10,6 @@
 # bash run.sh &
 
 nohup python trainer.py \
-    --game "connect4" \
-    --experiment-name "alphazero-fake" \
-    -x \
+    --game "othello" \
+    --experiment-name "alphazero-othello" \
     # --config="configs/othello.json" \
