@@ -400,7 +400,7 @@ def main():
         dest="game",
         type=str,
         default=DEFAULT_GAME,
-        help="Name of the game to train on (ex: 'othello', 'tictactoe'...).",
+        help="name of the game to train on (ex: 'othello', 'tictactoe'...).",
     )
     parser.add_argument(
         "-e",
@@ -408,7 +408,7 @@ def main():
         dest="experiment_name",
         type=str,
         default=DEFAULT_EXP_NAME,
-        help="Name of the experiment/trained AlphaZero.",
+        help="name of the experiment/trained AlphaZero.",
     )
     parser.add_argument(
         "-c",
@@ -416,7 +416,7 @@ def main():
         dest="json_config_file",
         type=str,
         default=None,
-        help="Path to a JSON config file for the training.",
+        help="path to a JSON config file for the training.",
     )
     parser.add_argument(
         "-q",
@@ -424,7 +424,7 @@ def main():
         dest="quiet",
         action="store_true",
         default=False,
-        help="If True then verbose is set to False during download.",
+        help="if set then verbose is set to False during download.",
     )
     parser.add_argument(
         "-x",
@@ -432,7 +432,7 @@ def main():
         dest="estimate",
         action="store_true",
         default=False,
-        help="If True then only perform training time estimation.",
+        help="if set then only perform training time estimation.",
     )
     parser.add_argument(
         "-f",
@@ -440,7 +440,7 @@ def main():
         dest="freeze",
         action="store_true",
         default=False,
-        help="If True then only save all game configurations in DEFAULT_CONFIGS_PATH.",
+        help="if set then only save all game configurations in DEFAULT_CONFIGS_PATH.",
     )
     args = parser.parse_args()
 

@@ -69,10 +69,10 @@ Go in the code folder `alphazero/` to execute any of the following commands.
 ### 2.1 - Play against MCTSPlayer
 
 ```bash
-python game_ui.py
+python game_ui.py --game othello
 ```
 
-The state of the board will be automatically saved as a PNG file in `outputs/` and overwrite itself after each move.
+The state of the board will be automatically saved as a PNG file in `outputs/` and overwrite itself after each move. Change **othello** to **tictactoe** or **connect4** to play another game. Use flag **--help** to list available game flags.
 
 ### 2.2 - Compare machine players
 
