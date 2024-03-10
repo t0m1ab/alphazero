@@ -17,15 +17,15 @@ class Connect4Config(Config):
     """ Configuration for AlphaConnect4Zero training. Any config file must define exactly all values listed below. """
     # GAME settings
     game: str = "connect4"
-    board_width: int = 8 # (8)
-    board_height: int = 6 # (6)
+    board_width: int = 7
+    board_height: int = 6
     # PLAYER settings
-    simulations: int = 50 # None to use compute_time # (100)
+    simulations: int = 100 # None to use compute_time # (100)
     compute_time: float = None # None to use simulations # (None)
     # TRAINING settings
-    iterations: int = 2 # (30)
-    episodes: int = 10 # (100)
-    epochs: int = 5 # (10)
+    iterations: int = 30 # (30)
+    episodes: int = 100 # (100)
+    epochs: int = 10 # (10)
     batch_size: int = 64 # (64)
     learning_rate: float = 0.001 # (0.001)
     device: str = "cpu"
@@ -52,8 +52,8 @@ class Connect4Board(Board):
 
     def __init__(
             self, 
-            width: int,
-            height: int,
+            width: int = None,
+            height: int = None,
             grid: np.ndarray = None, 
             player: int = 1,
             display_dir: str = None,
@@ -116,7 +116,7 @@ class Connect4Board(Board):
     
     def get_action_size(self) -> int:
         """ Returns the number of possible moves in the game = number of cells (pass is not allowed)."""
-        return self.n * self.n
+        return self.width
     
     def get_score(self) -> int:
         """ Returns the current score of the board from the viewpoint of self.player. """
@@ -295,15 +295,126 @@ class Connect4Net(PolicyValueNetwork):
 
     CONFIG = Connect4Config
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+            self, 
+            board_width: int = None,
+            board_height: int = None,
+            device: str = None, 
+            config: Config = None
+        ):
+        """ If <config> is provided, the value of <n> will be automatically overwritten. """
         super().__init__()
-        raise NotImplementedError("Connect4Net is not implemented yet.")
+    
+        # parametrized values
+        if config is not None:
+            self.__init_from_config(config)
+        else:
+            self.width = board_width
+            self.height = board_height
+            self.device = PolicyValueNetwork.get_torch_device(device)
+        
+        if self.width < 4 or self.height < 4:
+                raise ValueError(f"Borad size must be at least 4x4, got {self.width}x{self.height}")
+        
+        # fixed values for the network's architecture
+        self.action_size = self.width
+        self.n_channels = 32
+        self.dropout = 0.3
 
+        # layers
+        self.conv1 = nn.Conv2d(1, self.n_channels, 3, stride=1, padding=1, device=self.device)
+        self.conv2 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, padding=1, device=self.device)
+        self.conv3 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, device=self.device)
+        self.conv4 = nn.Conv2d(self.n_channels, self.n_channels, 3, stride=1, device=self.device)
+
+        self.bn1 = nn.BatchNorm2d(self.n_channels, device=self.device)
+        self.bn2 = nn.BatchNorm2d(self.n_channels, device=self.device)
+        self.bn3 = nn.BatchNorm2d(self.n_channels, device=self.device)
+        self.bn4 = nn.BatchNorm2d(self.n_channels, device=self.device)
+
+        self.fc1_input_size = self.n_channels * (self.width-4) * (self.height-4)
+        self.fc1 = nn.Linear(self.fc1_input_size, 64, device=self.device)
+        self.fc_bn1 = nn.BatchNorm1d(64, device=self.device)
+
+        self.fc2 = nn.Linear(64, 32, device=self.device)
+        self.fc_bn2 = nn.BatchNorm1d(32, device=self.device)
+
+        self.fc_probs = nn.Linear(32, self.action_size, device=self.device)
+        self.fc_value = nn.Linear(32, 1, device=self.device) 
+    
+    def __init_from_config(self, config: Config) -> None:
+        """ Initialize the network from a config given in a Config object. """
+        self.width = config.board_width
+        self.height = config.board_height
+        self.device = PolicyValueNetwork.get_torch_device(config.device)
+    
+    def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
+        """ Forward through the network and outputs (logits of probabilitites, value). """
+        # x: batch_size x board_x x board_y
+        x = input.view(-1, 1, self.width, self.height) # batch_size x 1 x width x height
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = x.view(-1, self.fc1_input_size)
+
+        x = F.dropout(F.relu(self.fc_bn1(self.fc1(x))), p=self.dropout, training=self.training) # batch_size x 1024
+        x = F.dropout(F.relu(self.fc_bn2(self.fc2(x))), p=self.dropout, training=self.training) # batch_size x 512
+
+        probs = self.fc_probs(x) # batch_size x action_size
+        value = self.fc_value(x) # batch_size x 1
+
+        return F.log_softmax(probs, dim=1), torch.tanh(value)
+    
+    def predict(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
+        """ Returns a policy and a value from the input state. """
+        self.eval()
+        with torch.no_grad():
+            log_probs, v =  self.forward(input)
+        return torch.exp(log_probs), v
+
+    def evaluate(self, board: Board) -> tuple[np.ndarray, float]:
+        """ 
+        Evaluation of the state of the cloned board from the viewpoint of the player that needs to play. 
+        A PolicyValueNetwork always evaluates the board from the viewpoint of player with id 1.
+        Therefore, the board should be switched if necessary.
+        """
+        input = torch.tensor(board.player * board.grid, dtype=torch.float, device=self.device)
+        torch_probs, torch_v = self.predict(input)
+        probs = torch_probs.cpu().numpy().reshape(-1)
+        return probs, torch_v.cpu().item()
+
+    def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:
+        """ Returns the normalized probabilities over the legal moves. """
+
+        mask_legal_moves = np.zeros(self.action_size, dtype=bool)
+        mask_legal_moves[legal_moves] = True
+        sum_legal_probs = np.sum(probs[mask_legal_moves])
+
+        if sum_legal_probs < 1e-6: # set uniform probabilities if the sum is too close to 0
+            print(f"The sum of the probabilities of the {len(legal_moves)} legal moves is {sum_legal_probs}")
+            return {move: 1/len(legal_moves) for move in legal_moves}
+        
+        # normalize the probabilities to sum to 1
+        norm_probs = {move: probs[move] / sum_legal_probs for move in legal_moves}
+
+        return norm_probs
+    
+    def to_neural_array(self, move_probs: dict[Action: float]) -> np.ndarray:
+        """ Returns the probabilitites of move_probs in the format given as output by the network. """
+        pi = np.zeros(self.action_size)
+        for move, prob in move_probs.items():
+            pi[move] = prob
+        return pi
+    
 
 def main():
     
-    _ = Connect4Board(width=8, height=6)
+    _ = Connect4Board(width=7, height=6)
     print("Connect4Board created successfully!")
+
+    _ = Connect4Net(board_width=7, board_height=6)
+    print("Connect4Net created successfully!")
     
 
 if __name__ == "__main__":

@@ -279,10 +279,11 @@ class OthelloNet(PolicyValueNetwork):
         if config is not None:
             self.__init_from_config(config)
         else:
-            if n is None:
-                raise ValueError("The board size must be a positive and even integer like 4, 6 or 8.")
             self.n = n
             self.device = PolicyValueNetwork.get_torch_device(device)
+        
+        if self.n is None:
+            raise ValueError("The board size must be a positive and even integer like 4, 6 or 8.")
         
         # fixed values for the network's architecture
         self.action_size = self.n * self.n + 1

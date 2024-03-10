@@ -230,8 +230,8 @@ def main():
     _ = TicTacToeBoard()
     print("TicTacToeBoard created successfully!")
 
-    _ = TicTacToeNet()
-    print("TicTacToeNet created successfully!")
+    # _ = TicTacToeNet()
+    # print("TicTacToeNet created successfully!")
     
 
 if __name__ == "__main__":
