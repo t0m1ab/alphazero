@@ -57,13 +57,13 @@ class TicTacToeBoard(Board):
         ):
         super().__init__(display_dir)
 
+        self.game = "tictactoe"
+
         if config is not None:
             self.__init_from_config(config)
         else:
             self.grid = grid if grid is not None else np.zeros((3,3))
             self.player = player
-
-        self.game_name = "tictactoe"
     
     def reset(self) -> None:
         """ Resets the board to the initial state. """
@@ -205,7 +205,7 @@ class TicTacToeBoard(Board):
         # save the image
         extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted()) # remove the frame in the saved image
         Path(self.display_dir).mkdir(parents=True, exist_ok=True)
-        filename = filename if filename is not None else "tictactoe_board.png"
+        filename = filename if filename is not None else f"{self.game}.png"
         plt.savefig(os.path.join(self.display_dir, filename), bbox_inches=extent, dpi=150)
         plt.close()
 

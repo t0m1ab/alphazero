@@ -59,23 +59,29 @@ class OthelloBoard(Board):
         ):
         super().__init__(display_dir)
 
+        self.game = "othello"
+
         if config is not None:
             self.__init_from_config(config)
         else:
             self.n = n
             self.grid = grid if grid is not None else self.__get_init_board()
             self.player = player
+            self.pass_move = self.get_board_shape() # pass is allowed in Othello only when a player has no legal move
 
         if self.n % 2 != 0:
             raise ValueError(f"Board size must be even but got n={self.n}")
-        self.pass_move = self.get_board_shape() # pass is allowed in Othello only when a player has no legal move
-        self.game_name = "othello"
-    
+
+    def reset(self) -> None:
+        """ Resets the board to the initial state. """
+        self.grid = self.__get_init_board()
+        self.player = 1
+        self.pass_move = self.get_board_shape()
+
     def __init_from_config(self, config: Config) -> None:
         """ Initialize the Othello board from a configuration given in a Config object. """
         self.n = config.board_size
-        self.grid = self.__get_init_board()
-        self.player = 1
+        self.reset()
     
     def __get_init_board(self) -> np.ndarray:
         """ Returns the initial board state as a 2D np.ndarray representing the content of each cell. """  
@@ -88,12 +94,7 @@ class OthelloBoard(Board):
     
     def __str__(self) -> str:
         return f"{self.__class__.__name__}{self.n}"
-    
-    def reset(self) -> None:
-        """ Resets the board to the initial state. """
-        self.grid = self.__get_init_board()
-        self.player = 1
-    
+       
     def clone(self) -> "OthelloBoard":
         """ Returns a deep copy of the board. """
         return OthelloBoard(
@@ -250,7 +251,7 @@ class OthelloBoard(Board):
         # save the image
         extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted()) # remove the frame in the saved image
         Path(self.display_dir).mkdir(parents=True, exist_ok=True)
-        filename = filename if filename is not None else "othello_board.png"
+        filename = filename if filename is not None else f"{self.game}.png"
         plt.savefig(os.path.join(self.display_dir, filename), bbox_inches=extent, dpi=150)
         plt.close()
 

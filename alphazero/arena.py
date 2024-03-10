@@ -16,7 +16,7 @@ class Arena():
 
     def __init__(self, player1: Player, player2: Player, board: Board) -> None:   
         self.board = board
-        self.game = self.board.game_name
+        self.game = self.board.game
         self.player1 = player1
         self.player2 = player2
 

@@ -78,7 +78,7 @@ class Board():
 
     def __init__(self, display_dir: str = None):
         self.display_dir = display_dir if display_dir is not None else DEFAULT_OUTPUTS_PATH
-        self.game_name = None # str: name of the game
+        self.game = None # str: name of the game
         self.grid = None # np.ndarray: the board representation (2D array filled with 0s, 1s and -1s)
         self.player = None # int: id of the player that needs to play (1 or -1)
         self.pass_move = None # Action: must remain None if the game never allows to pass
