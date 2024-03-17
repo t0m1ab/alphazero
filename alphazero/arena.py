@@ -36,7 +36,9 @@ class Arena():
             self, 
             player2_starts: bool = False, 
             display: bool = False,
+            save_frames: bool = False,
             return_results: bool = False,
+            show_indexes: bool = True,
             verbose: bool = False,
         ) -> int:
 
@@ -48,14 +50,15 @@ class Arena():
             print(f"> Player 1 = {self.player1.__class__.__name__}")
             print(f"> Player 2 = {self.player2.__class__.__name__}")
         if display:
-            self.board.display(indexes=True)
+            self.board.display(indexes=show_indexes, filename=f"{self.board.game}_0.png" if save_frames else None)
 
         # initialize the board and the players
         self.board.reset()
         self.player1.reset()
         self.player2.reset()
         players = (self.player1, self.player2)
-                  
+        
+        round_idx = 1
         while not self.board.is_game_over():
             
             # get best move for the current player
@@ -72,14 +75,15 @@ class Arena():
                     msg += f"{k} = {v:.3f} | " if type(v) == float else f"{k} = {v} | "
                 print(msg[:-3])
             if display:
-                self.board.display(indexes=True)
+                self.board.display(indexes=show_indexes, filename=f"{self.board.game}_{round_idx}.png" if save_frames else None)
 
             # update internal state of players
             players[player_idx].apply_move(move, player=-self.board.player)
             players[1 - player_idx].apply_move(move, player=self.board.player)
 
-            # switch to the other player
+            # switch to the other player and increment the round index
             player_idx = 1 - player_idx
+            round_idx += 1
         
         score = abs(self.board.get_score())
 

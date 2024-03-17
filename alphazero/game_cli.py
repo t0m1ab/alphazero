@@ -13,9 +13,15 @@ def othello():
     """ Play Othello with CLI. """
     player1 = HumanPlayer(game="othello")
     player2 = MCTSPlayer(compute_time=2.0, verbose=True)
-    board = OthelloBoard(8)
+    board = OthelloBoard(6)
     arena = Arena(player1, player2, board)
-    arena.play_game(player2_starts=False, verbose=True, display=True)
+    arena.play_game(
+        player2_starts=False, 
+        verbose=True, 
+        display=True, 
+        save_frames=False,
+        show_indexes=True,
+    )
 
 
 def tictactoe():
@@ -24,7 +30,13 @@ def tictactoe():
     player2 = MCTSPlayer(compute_time=2.0, verbose=True)
     board = TicTacToeBoard()
     arena = Arena(player1, player2, board)
-    arena.play_game(player2_starts=False, verbose=True, display=True)
+    arena.play_game(
+        player2_starts=False, 
+        verbose=True, 
+        display=True, 
+        save_frames=False,
+        show_indexes=True,
+    )
 
 
 def connect4():
@@ -33,7 +45,13 @@ def connect4():
     player2 = MCTSPlayer(compute_time=2.0, verbose=True)
     board = Connect4Board(width=7, height=6)
     arena = Arena(player1, player2, board)
-    arena.play_game(player2_starts=False, verbose=True, display=True)
+    arena.play_game(
+        player2_starts=False, 
+        verbose=True, 
+        display=True, 
+        save_frames=False,
+        show_indexes=True,
+    )
 
 
 def main():
