@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
+import matplotlib.colors as mcolors
+from PIL import ImageColor
 from huggingface_hub import HfApi, hf_hub_download
 
 import alphazero
@@ -212,6 +214,13 @@ def push_model_to_hf_hub(
     
     if verbose:
         print(f"Model '{repo_id}' was sucessfully pushed to the HuggingFace Hub!")
+
+
+def get_rgb_code(color: str) -> tuple:
+    """ Return the RGB code of the color <color>. """
+    if not color in mcolors.CSS4_COLORS:
+        raise ValueError(f"Color {color} is not in matplotlib.colors.CSS4_COLORS")
+    return ImageColor.getcolor(mcolors.CSS4_COLORS[color], "RGB")
 
 
 def main():

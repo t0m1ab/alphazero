@@ -5,11 +5,13 @@ from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from alphazero.base import Action, Board, PolicyValueNetwork, Config
+from alphazero.base import Action, Board, PolicyValueNetwork, Config, DisplayMode
+from alphazero.utils import get_rgb_code
 
 
 @dataclass
@@ -55,9 +57,10 @@ class OthelloBoard(Board):
             grid: np.ndarray = None, 
             player: int = 1,
             display_dir: str = None,
+            display_mode: str = None,
             config: Config = None,
         ):
-        super().__init__(display_dir)
+        super().__init__(display_dir=display_dir, display_mode=display_mode)
 
         self.game = "othello"
 
@@ -212,13 +215,9 @@ class OthelloBoard(Board):
         else: # return the id of the player who has the positive score
             return self.player if score > 0 else -self.player
         
-    def display(self, indexes: bool = True, filename: str = None) -> None:
+    def human_display(self, indexes: bool = True, filename: str = None) -> None:
         """ 
         Displays the board in a grid, each cell being filled with a circle if there is a piece on it.
-
-        ARGUMENTS:
-            - indexes: if True, the indexes of the rows and columns are displayed on the board.
-            - filename: the name of the file in which the image of the board will be saved.
         """
 
         # create the image of the board
@@ -254,6 +253,25 @@ class OthelloBoard(Board):
         filename = filename if filename is not None else f"{self.game}.png"
         plt.savefig(os.path.join(self.display_dir, filename), bbox_inches=extent, dpi=150)
         plt.close()
+
+    def pixel_display(self, indexes: bool = True, filename: str = None) -> None:
+        """ 
+        Displays the board in a grid, each cell being a pixel.
+        """
+
+        # create the RGB board
+        board_rgb = np.zeros((self.n, self.n, 3), dtype=np.uint8)
+        for row in range(self.n):
+            for col in range(self.n):
+                board_rgb[row][col] = get_rgb_code(OthelloBoard.COLORS[self.grid[row][col]])
+
+        # convert to pixel image
+        board_image = Image.fromarray(board_rgb, "RGB")
+
+        # save the image
+        Path(self.display_dir).mkdir(parents=True, exist_ok=True)
+        filename = filename if filename is not None else f"{self.game}.png"
+        board_image.save(os.path.join(self.display_dir, filename))
 
 
 class OthelloNet(PolicyValueNetwork):

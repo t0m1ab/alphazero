@@ -5,11 +5,13 @@ from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from PIL import Image
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from alphazero.base import Action, Board, PolicyValueNetwork, Config
+from alphazero.utils import get_rgb_code
 
 
 @dataclass
@@ -46,16 +48,17 @@ class TicTacToeBoard(Board):
 
     CONFIG = TicTacToeConfig
     DIRECTIONS = [(1,1), (1,0), (1,-1), (0,-1), (-1,-1), (-1,0), (-1,1), (0,1)]
-    COLORS = {-1: "white", 0: "green", 1: "black"}
+    COLORS = {-1: "white", 0: "silver", 1: "black"}
 
     def __init__(
             self, 
             grid: np.ndarray = None, 
             player: int = 1,
             display_dir: str = None,
+            display_mode: str = None,
             config: Config = None,
         ):
-        super().__init__(display_dir)
+        super().__init__(display_dir=display_dir, display_mode=display_mode)
 
         self.game = "tictactoe"
 
@@ -166,7 +169,7 @@ class TicTacToeBoard(Board):
         else: # draw
             return 0
         
-    def display(self, indexes: bool = True, filename: str = None) -> None:
+    def human_display(self, indexes: bool = True, filename: str = None) -> None:
         """ 
         Displays the board in a grid, each cell being filled with a circle if there is a piece on it.
 
@@ -208,6 +211,25 @@ class TicTacToeBoard(Board):
         filename = filename if filename is not None else f"{self.game}.png"
         plt.savefig(os.path.join(self.display_dir, filename), bbox_inches=extent, dpi=150)
         plt.close()
+    
+    def pixel_display(self, indexes: bool = True, filename: str = None) -> None:
+        """ 
+        Displays the board in a grid, each cell being a pixel.
+        """
+
+        # create the RGB board
+        board_rgb = np.zeros((3, 3, 3), dtype=np.uint8)
+        for row in range(3):
+            for col in range(3):
+                board_rgb[row][col] = get_rgb_code(TicTacToeBoard.COLORS[self.grid[row][col]])
+
+        # convert to pixel image
+        board_image = Image.fromarray(board_rgb, "RGB")
+
+        # save the image
+        Path(self.display_dir).mkdir(parents=True, exist_ok=True)
+        filename = filename if filename is not None else f"{self.game}.png"
+        board_image.save(os.path.join(self.display_dir, filename))
 
 
 class TicTacToeNet(PolicyValueNetwork):

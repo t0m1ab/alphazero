@@ -42,6 +42,12 @@ class TreeEval(Enum):
         return {x.value: x for x in cls}
 
 
+class DisplayMode(Enum):
+    """ Enum to indicate the mode of display to use. """
+    HUMAN = "human"
+    PIXEL = "pixel"
+
+
 @dataclass
 class Config():
     """ Base class to define configuration to train AlphaZero. """
@@ -76,8 +82,14 @@ class Board():
 
     CONFIG = Config
 
-    def __init__(self, display_dir: str = None):
+    def __init__(self, display_dir: str = None, display_mode: DisplayMode = None):
         self.display_dir = display_dir if display_dir is not None else DEFAULT_OUTPUTS_PATH
+        if display_mode is None:
+            self.display_mode = DisplayMode.HUMAN
+        elif display_mode in DisplayMode:
+            self.display_mode = DisplayMode(display_mode)
+        else:
+            raise ValueError(f"Unknown display mode: {display_mode}")
         self.game = None # str: name of the game
         self.grid = None # np.ndarray: the board representation (2D array filled with 0s, 1s and -1s)
         self.player = None # int: id of the player that needs to play (1 or -1)
@@ -155,9 +167,39 @@ class Board():
         raise NotImplementedError
     
     @abstractmethod
-    def display(self, *args, **kwargs):
-        """ Display the current state of the board. """
+    def human_display(self, *args, **kwargs):
+        """ Display the current state of the board in HUMAN mode. """
         raise NotImplementedError
+
+    @abstractmethod
+    def pixel_display(self, *args, **kwargs):
+        """ Display the current state of the board in PIXEL mode. """
+        raise NotImplementedError
+    
+    def display(self, indexes: bool = True, filename: str = None, mode: str = None) -> None:
+        """ 
+        Displays the board according to the specified mode.
+
+        ARGUMENTS:
+            - indexes: if True, the indexes of the rows and columns are displayed on the board.
+            - filename: the name of the file in which the image of the board will be saved.
+            - mode: the display mode (should be a value of DisplayMode).
+        """
+
+        # check and associate display mode
+        if mode is None:
+            mode = self.display_mode
+        elif mode in DisplayMode:
+            mode = DisplayMode(mode)
+        else:
+            raise ValueError(f"Unknown display mode: {mode}")
+
+        if mode == DisplayMode.HUMAN:
+            self.human_display(indexes, filename)
+        elif mode == DisplayMode.PIXEL:
+            self.pixel_display(indexes, filename)
+        else:
+            raise NotImplementedError(f"Display mode {mode} is not implemented yet.")
 
 
 class Player():

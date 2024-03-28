@@ -9,11 +9,11 @@ from alphazero.games.connect4 import Connect4Board
 from alphazero.games.registers import BOARDS_REGISTER
 
 
-def othello():
+def othello(display_mode: str = None):
     """ Play Othello with CLI. """
     player1 = HumanPlayer(game="othello")
     player2 = MCTSPlayer(compute_time=2.0, verbose=True)
-    board = OthelloBoard(6)
+    board = OthelloBoard(6, display_mode=display_mode)
     arena = Arena(player1, player2, board)
     arena.play_game(
         player2_starts=False, 
@@ -24,11 +24,11 @@ def othello():
     )
 
 
-def tictactoe():
+def tictactoe(display_mode: str = None):
     """ Play TicTacToe with CLI. """
     player1 = HumanPlayer(game="tictactoe")
     player2 = MCTSPlayer(compute_time=2.0, verbose=True)
-    board = TicTacToeBoard()
+    board = TicTacToeBoard(display_mode=display_mode)
     arena = Arena(player1, player2, board)
     arena.play_game(
         player2_starts=False, 
@@ -39,11 +39,11 @@ def tictactoe():
     )
 
 
-def connect4():
+def connect4(display_mode: str = None):
     """ Play Connect4 with CLI. """
     player1 = HumanPlayer(game="connect4")
     player2 = MCTSPlayer(compute_time=2.0, verbose=True)
-    board = Connect4Board(width=7, height=6)
+    board = Connect4Board(width=7, height=6, display_mode=display_mode)
     arena = Arena(player1, player2, board)
     arena.play_game(
         player2_starts=False, 
@@ -68,6 +68,14 @@ def main():
         help="name of the game to play (ex: 'othello', 'tictactoe', 'connect4'...).",
     )
     parser.add_argument(
+        "-d",
+        "--display",
+        dest="display_mode",
+        type=str,
+        default="human",
+        help="display mode for the game ('human' or 'pixel').",
+    )
+    parser.add_argument(
         "-l",
         "--list",
         dest="list_commands",
@@ -84,11 +92,11 @@ def main():
         return
 
     if args.game == "othello":
-        othello()
+        othello(display_mode=args.display_mode)
     elif args.game == "tictactoe":
-        tictactoe()
+        tictactoe(display_mode=args.display_mode)
     elif args.game == "connect4":
-        connect4()
+        connect4(display_mode=args.display_mode)
     else:
         raise ValueError(f"Unknown game: {args.game}")
 
