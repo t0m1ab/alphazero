@@ -23,6 +23,8 @@ class OthelloConfig(Config):
     # PLAYER settings
     simulations: int = 50 # None to use compute_time # (100)
     compute_time: float = None # None to use simulations # (None)
+    dirichlet_alpha: float = 0.3 # (0.3)
+    dirichlet_epsilon: float = 0.25 # (0.25)
     # TRAINING settings
     iterations: int = 2 # (30)
     episodes: int = 10 # (100)

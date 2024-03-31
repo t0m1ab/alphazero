@@ -22,10 +22,15 @@ class Node:
         # self.P and self._children_probs are only used when the evaluation method is set to TreeEval.NEURAL (AlphaZero)
         self.P = prob # prior probability of taking the action that led to the node from the parent node (see why prior in PUCT formula)
         self._children_probs = None # array storing the raw probs (obtained from a nn) of all existing actions in the game
+        self.has_dirichlet_noise = False # flag to know if dirichlet noise has been added to the P attributes of the children
     
     def __str__(self) -> str:
         n_siblings = len(self.parent.children) if self.parent is not None else 0
-        return f"Node: N={self.N} | Q={self.Q} | UCT={self.UCT()} | n_children={len(self.children)} | move={self.move} | n_siblings={n_siblings}"
+        if self.P is not None:
+            action_value = f"P={self.P} | PUCT={self.PUCT()}"
+        else:
+            action_value = f"UCT={self.UCT()}"
+        return f"Node: N={self.N} | Q={self.Q} | {action_value} | n_children={len(self.children)} | move={self.move} | n_siblings={n_siblings}"
     
     def add_child(self, move: Action, prob: float = None) -> None:
         self.children[move] = Node(move=move, parent=self, prob=prob)
@@ -48,12 +53,20 @@ class MCT():
     Two evaluation methods are available: ROLLOUT (classic simulation) and NEURAL (nn evaluation).
     """
     
-    def __init__(self, eval_method: str = None, nn: PolicyValueNetwork = None) -> None:
+    def __init__(
+            self, 
+            eval_method: str = None, 
+            nn: PolicyValueNetwork = None,
+            dirichlet_alpha: float = None,
+            dirichlet_epsilon: float = None,
+        ) -> None:
         self.root = Node(move=None, parent=None)
         self.n_rollouts = 0
         self.simulation_time = 0
         self.eval_method = TreeEval.to_dict()["rollout" if eval_method is None else eval_method]
         self._nn = nn
+        self.dirichlet_alpha = dirichlet_alpha
+        self.dirichlet_epsilon = dirichlet_epsilon
         if self._nn is not None and self.eval_method != TreeEval.NEURAL:
             raise ValueError(f"A neural network has been set for the MCT but the evaluation method is {self.eval_method}")
 
@@ -131,8 +144,8 @@ class MCT():
         elif self.eval_method == TreeEval.NEURAL:
             legal_moves = cloned_board.get_moves()
             # at this level node._children_probs is not None because <node> didn't trigger the condition node.N == 0 before
-            norm_children_probs = self._nn.get_normalized_probs(node._children_probs, legal_moves)     
-            for move, prob in norm_children_probs.items():
+            norm_children_probs = self._nn.get_normalized_probs(node._children_probs, legal_moves)    
+            for move, prob in norm_children_probs.items(): # OPTIONAL UPDATE: ADD DIRICHLET NOISE HERE IF NODE==ROOT 
                 node.add_child(move=move, prob=prob)
         
         # expand the selected node by selecting a move
@@ -202,10 +215,18 @@ class MCT():
     def __search_iter(self, cloned_board: Board) -> None:
         """ A single iteration of the search loop. """
 
-        # init the root node with the nn probs if the tree was restarted from an unexplored state
-        if self.eval_method == TreeEval.NEURAL and self.root._children_probs is None:
-            probs, _ = self._nn.evaluate(cloned_board)
-            self.root._children_probs = probs
+        if self.eval_method == TreeEval.NEURAL:
+            # init the root node with the nn probs if the tree was restarted from an unexplored state
+            if self.root._children_probs is None: 
+                probs, _ = self._nn.evaluate(cloned_board)
+                self.root._children_probs = probs
+            # add dirichlet noise to the transition probabilities from the root node if necessary
+            if self.dirichlet_alpha is not None and self.dirichlet_epsilon is not None:
+                if self.root.has_dirichlet_noise is False and len(self.root.children) > 0:
+                    self.root.has_dirichlet_noise = True
+                    dirichlet_noise = np.random.dirichlet([self.dirichlet_alpha for _ in range(len(self.root.children))])
+                    for idx, move in enumerate(self.root.children):
+                        self.root.children[move].P = (1 - self.dirichlet_epsilon) * self.root.children[move].P + self.dirichlet_epsilon * dirichlet_noise[idx]
         
         node, cloned_board = self.select_node(cloned_board) # cloned board is modified there to reflect the selected node
         player_to_play = cloned_board.player # id of the player that needs to play from the selected node

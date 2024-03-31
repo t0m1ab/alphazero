@@ -331,7 +331,9 @@ class AlphaZeroTrainer:
         self.az_player = AlphaZeroPlayer(
             n_sim=self.config.simulations, 
             compute_time=self.config.compute_time, 
-            nn=self.nn, 
+            nn=self.nn,
+            dirichlet_alpha=self.config.dirichlet_alpha,
+            dirichlet_epsilon=self.config.dirichlet_epsilon,
             verbose=verbose
         )
         self.loss_values = defaultdict(dict) # ensure that loss values are reset

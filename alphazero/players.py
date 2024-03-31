@@ -199,10 +199,14 @@ class AlphaZeroPlayer(MCTSPlayer):
             n_sim: int = None, 
             compute_time: float = None, 
             nn: PolicyValueNetwork = None,
+            dirichlet_alpha: float = None,
+            dirichlet_epsilon: float = None,
             verbose: bool = False,
         ) -> None:
         super().__init__(n_sim=n_sim, compute_time=compute_time, verbose=verbose)
         self.mct = MCT(eval_method="neural", nn=nn) # nn maybe init to None but loaded/assigned later
+        self.mct.dirichlet_alpha = dirichlet_alpha
+        self.mct.dirichlet_epsilon = dirichlet_epsilon
     
     def clone(self) -> "AlphaZeroPlayer":
         """ Returns a deep copy of the player. """
@@ -210,11 +214,18 @@ class AlphaZeroPlayer(MCTSPlayer):
             n_sim=self.n_sim, 
             compute_time=self.compute_time, 
             nn=self.mct.nn.clone() if self.mct.nn is not None else None,
+            dirichlet_alpha=self.mct.dirichlet_alpha,
+            dirichlet_epsilon=self.mct.dirichlet_epsilon,
             verbose=self.verbose,
         )
     
     def reset(self) -> None:
-        self.mct = MCT(eval_method="neural", nn=self.mct.nn)
+        self.mct = MCT(
+            eval_method="neural", 
+            nn=self.mct.nn,
+            dirichlet_alpha=self.mct.dirichlet_alpha,
+            dirichlet_epsilon=self.mct.dirichlet_epsilon,
+        )
 
 
 def main():
