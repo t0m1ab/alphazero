@@ -67,11 +67,13 @@ class TicTacToeBoard(Board):
         else:
             self.grid = grid if grid is not None else np.zeros((3,3))
             self.player = player
+            self.max_moves = 9
     
     def reset(self) -> None:
         """ Resets the board to the initial state. """
         self.grid = np.zeros((3,3))
         self.player = 1
+        self.max_moves = 9
     
     def __init_from_config(self, config: Config) -> None:
         """ Initialize the TicTacToe board from a configuration given in a Config object. """

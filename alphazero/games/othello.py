@@ -25,6 +25,9 @@ class OthelloConfig(Config):
     compute_time: float = None # None to use simulations # (None)
     dirichlet_alpha: float = 0.3 # (0.3)
     dirichlet_epsilon: float = 0.25 # (0.25)
+    temp_scheduler_type: str = "linear" # linear | constant | exponential # (linear)
+    temp_max_step: int = 15 # temperature = 1 until step temp_step_max in every game # (30)
+    temp_min_step: int = 20 # temperature = 0 from step temp_step_min until the end of the game # (10)
     # TRAINING settings
     iterations: int = 2 # (30)
     episodes: int = 10 # (100)
@@ -73,6 +76,7 @@ class OthelloBoard(Board):
             self.grid = grid if grid is not None else self.__get_init_board()
             self.player = player
             self.pass_move = self.get_board_shape() # pass is allowed in Othello only when a player has no legal move
+            self.max_moves = self.n * self.n - 4
 
         if self.n % 2 != 0:
             raise ValueError(f"Board size must be even but got n={self.n}")
@@ -82,6 +86,7 @@ class OthelloBoard(Board):
         self.grid = self.__get_init_board()
         self.player = 1
         self.pass_move = self.get_board_shape()
+        self.max_moves = self.n * self.n - 4
 
     def __init_from_config(self, config: Config) -> None:
         """ Initialize the Othello board from a configuration given in a Config object. """

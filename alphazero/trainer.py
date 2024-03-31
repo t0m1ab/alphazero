@@ -12,7 +12,7 @@ import alphazero
 from alphazero.base import Config
 from alphazero.utils import dotdict, push_model_to_hf_hub, DEFAULT_CONFIGS_PATH, DEFAULT_MODELS_PATH
 from alphazero.players import AlphaZeroPlayer
-from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER
+from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER, TEMP_SCHEDULERS_REGISTER
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
 from alphazero.timers import SelfPlayTimer, NeuralTimer
 
@@ -166,10 +166,14 @@ class AlphaZeroTrainer:
             
             # self-play
             memory_buffer = [] # temporary memory for the current episode
+            move_counter = 0
             while not self.board.is_game_over():
+
+                # get the temperature for the current move
+                temp = self.temp_scheduler[move_counter]
                 
                 # get best move for the current player
-                move, move_probs = self.az_player.get_move(self.board, return_action_probs=True)
+                move, move_probs = self.az_player.get_move(self.board, temp=temp, return_action_probs=True)
 
                 # store the sample in the memory
                 memory_buffer.append(Sample(
@@ -185,6 +189,9 @@ class AlphaZeroTrainer:
 
                 # update internal state of the player
                 self.az_player.apply_move(move, player=-self.board.player)
+
+                # increment the move counter
+                move_counter += 1
             
             # update samples in memory_buffer with the outcome of the game
             outcome = self.board.get_winner()
@@ -335,6 +342,11 @@ class AlphaZeroTrainer:
             dirichlet_alpha=self.config.dirichlet_alpha,
             dirichlet_epsilon=self.config.dirichlet_epsilon,
             verbose=verbose
+        )
+        self.temp_scheduler = TEMP_SCHEDULERS_REGISTER[self.config.temp_scheduler_type](
+            temp_max_step=self.config.temp_max_step,
+            temp_min_step=self.config.temp_min_step,
+            max_steps=self.board.max_moves,
         )
         self.loss_values = defaultdict(dict) # ensure that loss values are reset
 

@@ -13,6 +13,7 @@ def test_object_creation():
     from alphazero.arena import main as arena_main
     from alphazero.trainer import tests as trainers_main
     from alphazero.timers import main as timer_main
+    from alphazero.schedulers import main as schedulers_main
 
     base_main()
     mcts_main()
@@ -21,6 +22,7 @@ def test_object_creation():
     arena_main()
     trainers_main()
     timer_main()
+    schedulers_main()
 
     print(f"> Object initialization successfully executed in {time() - start_test:.3f} seconds.")
 

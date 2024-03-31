@@ -94,6 +94,7 @@ class Board():
         self.grid = None # np.ndarray: the board representation (2D array filled with 0s, 1s and -1s)
         self.player = None # int: id of the player that needs to play (1 or -1)
         self.pass_move = None # Action: must remain None if the game never allows to pass
+        self.max_moves = None # int: max limit to the number of moves in the game
     
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -344,6 +345,30 @@ class PolicyValueNetwork(nn.Module):
     def to_neural_array(self, move_probs: dict[Action: float]) -> np.ndarray:
         """ Returns the probabilitites of move_probs in the format given as output by the network. """
         raise NotImplementedError
+
+
+class TemperatureScheduler():
+    """
+    Temperature scheduler used to control the exploration of the MCTS.
+    """
+    def __init__(self, temp_max_step: int, temp_min_step: int, max_steps: int) -> None:
+        self.temp_max_step = temp_max_step
+        self.temp_min_step = temp_min_step
+        self.max_steps = max_steps
+    
+    @abstractmethod
+    def compute_temperature(self, step: int) -> float:
+        """ Compute the temperature at the given step. """
+        raise NotImplementedError
+    
+    def __getitem__(self, step: int) -> float:
+        """ Returns the temperature at the given step. """
+        return self.compute_temperature(step)
+    
+    def __iter__(self):
+        """ Returns an iterator over the temperatures. """
+        for step in range(self.max_steps + 1):
+            yield self.compute_temperature(step)
 
 
 def main():

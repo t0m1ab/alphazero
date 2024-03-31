@@ -74,6 +74,7 @@ class Connect4Board(Board):
             self.grid = grid if grid is not None else self.__get_init_board()
             self.free_rows = self.__count_free_rows() # count the number of free cells in each column
             self.player = player
+            self.max_moves = self.width * self.height
 
         if self.width < 4 or self.height < 4:
             raise ValueError(f"Borad size must be at least 4x4, got {self.width}x{self.height}")
@@ -83,6 +84,7 @@ class Connect4Board(Board):
         self.grid = self.__get_init_board()
         self.free_rows = self.__count_free_rows()
         self.player = 1
+        self.max_moves = self.width * self.height
 
     def __init_from_config(self, config: Config) -> None:
         """ Initialize the Connect4 board from a configuration given in a Config object. """
