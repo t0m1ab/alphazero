@@ -1,11 +1,11 @@
 import argparse
 
-from alphazero.base import Board, Player
-from alphazero.players import HumanPlayer, RandomPlayer, GreedyPlayer, MCTSPlayer
+from alphazero.base import Board, Player, PolicyValueNetwork
+from alphazero.players import HumanPlayer, RandomPlayer, GreedyPlayer, MCTSPlayer, AlphaZeroPlayer
 from alphazero.arena import Arena
-from alphazero.games.othello import OthelloBoard
-from alphazero.games.tictactoe import TicTacToeBoard
-from alphazero.games.connect4 import Connect4Board
+from alphazero.games.othello import OthelloBoard, OthelloNet
+from alphazero.games.tictactoe import TicTacToeBoard, TicTacToeNet
+from alphazero.games.connect4 import Connect4Board, Connect4Net
 from alphazero.games.registers import BOARDS_REGISTER
 
 

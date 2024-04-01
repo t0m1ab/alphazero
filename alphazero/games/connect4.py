@@ -24,6 +24,11 @@ class Connect4Config(Config):
     # PLAYER settings
     simulations: int = 100 # None to use compute_time # (100)
     compute_time: float = None # None to use simulations # (None)
+    dirichlet_alpha: float = 0.03 # (0.3)
+    dirichlet_epsilon: float = 0.25 # (0.25)
+    temp_scheduler_type: str = "linear" # linear | constant | exponential # (linear)
+    temp_max_step: int = 15 # temperature = 1 until step temp_step_max in every game # (30)
+    temp_min_step: int = 20 # temperature = 0 from step temp_step_min until the end of the game # (10)
     # TRAINING settings
     iterations: int = 30 # (30)
     episodes: int = 100 # (100)

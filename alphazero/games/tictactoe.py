@@ -22,6 +22,11 @@ class TicTacToeConfig(Config):
     # PLAYER settings
     simulations: int = 1000 # None to use compute_time # (100)
     compute_time: float = None # None to use simulations # (None)
+    dirichlet_alpha: float = 0.03 # (0.3)
+    dirichlet_epsilon: float = 0.25 # (0.25)
+    temp_scheduler_type: str = "linear" # linear | constant | exponential # (linear)
+    temp_max_step: int = 15 # temperature = 1 until step temp_step_max in every game # (30)
+    temp_min_step: int = 20 # temperature = 0 from step temp_step_min until the end of the game # (10)
     # TRAINING settings
     iterations: int = 2 # (30)
     episodes: int = 10 # (100)
@@ -244,9 +249,89 @@ class TicTacToeNet(PolicyValueNetwork):
 
     CONFIG = TicTacToeConfig
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+            self, 
+            device: str = None, 
+            config: Config = None
+        ):
+        """ If <config> is provided, the value of <n> will be automatically overwritten. """
         super().__init__()
-        raise NotImplementedError("TicTacToeNet is not implemented yet.")
+
+        # parametrized values
+        if config is not None:
+            self.__init_from_config(config)
+        else:
+            self.device = PolicyValueNetwork.get_torch_device(device)
+
+        # self.dropout = 0.3
+
+        self.fc1 = nn.Linear(9, 9, device=self.device)
+        self.fc2 = nn.Linear(9, 9, device=self.device)
+        self.fc_probs = nn.Linear(9, 9, device=self.device)
+        self.fc_value = nn.Linear(9, 1, device=self.device)
+        self.flatten = nn.Flatten()
+
+        self.bn1 = nn.BatchNorm1d(9, device=self.device)
+        self.bn2 = nn.BatchNorm1d(9, device=self.device)
+
+    def __init_from_config(self, config: Config) -> None:
+        """ Initialize the network from a config given in a Config object. """
+        self.device = PolicyValueNetwork.get_torch_device(config.device) 
+
+    def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
+        """ Forward through the network and outputs (logits of probabilitites, value). """
+        x = self.flatten(input)
+        x = F.relu(self.bn1(self.fc1(x)))
+        x = F.relu(self.bn2(self.fc2(x)))
+        # x = F.dropout(x, p=self.dropout, training=self.training)
+
+        probs = self.fc_probs(x) # batch_size x action_size
+        value = self.fc_value(x) # batch_size x 1
+
+        return F.log_softmax(probs, dim=1), torch.tanh(value)
+        
+    def predict(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
+        """ Returns a policy and a value from the input state. """
+        self.eval()
+        with torch.no_grad():
+            log_probs, v =  self.forward(input)
+        return torch.exp(log_probs), v
+
+    def evaluate(self, board: Board) -> tuple[np.ndarray, float]:
+        """ 
+        Evaluation of the state of the cloned board from the viewpoint of the player that needs to play. 
+        A PolicyValueNetwork always evaluates the board from the viewpoint of player with id 1.
+        Therefore, the board should be switched if necessary.
+        """
+        input = torch.tensor(board.player * board.grid, dtype=torch.float, device=self.device)
+        torch_probs, torch_v = self.predict(input)
+        probs = torch_probs.cpu().numpy().reshape(-1)
+        return probs, torch_v.cpu().item()
+    
+    def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:
+        """ Returns the normalized probabilities over the legal moves. """
+
+        sum_legal_probs = 0
+        legal_probs = {}
+        for move in legal_moves:
+            legal_probs[move] = probs[3 * move[0] + move[1]]
+            sum_legal_probs += legal_probs[move]
+
+        if sum_legal_probs < 1e-6: # set uniform probabilities if the sum is too close to 0
+            print(f"The sum of the probabilities of the {len(legal_moves)} legal moves is {sum_legal_probs}")
+            return {move: 1/len(legal_moves) for move in legal_moves}
+
+        # normalize the probabilities to sum to 1
+        norm_probs = {move: prob/sum_legal_probs for move, prob in legal_probs.items()}
+
+        return norm_probs
+    
+    def to_neural_array(self, move_probs: dict[Action: float]) -> np.ndarray:
+        """ Returns the probabilitites of move_probs in the format given as output by the network. """
+        pi = np.zeros(9)
+        for move, prob in move_probs.items():
+            pi[3 * move[0] + move[1]] = prob
+        return pi
 
 
 def main():
@@ -254,8 +339,8 @@ def main():
     _ = TicTacToeBoard()
     print("TicTacToeBoard created successfully!")
 
-    # _ = TicTacToeNet()
-    # print("TicTacToeNet created successfully!")
+    _ = TicTacToeNet()
+    print("TicTacToeNet created successfully!")
     
 
 if __name__ == "__main__":
