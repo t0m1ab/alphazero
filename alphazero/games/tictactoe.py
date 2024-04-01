@@ -19,18 +19,19 @@ class TicTacToeConfig(Config):
     """ Configuration for AlphaTicTacToeZero training. Any config file must define exactly all values listed below. """
     # GAME settings
     game: str = "tictactoe"
+    board_size: int = 3
     # PLAYER settings
-    simulations: int = 1000 # None to use compute_time # (100)
+    simulations: int = 100 # None to use compute_time # (100)
     compute_time: float = None # None to use simulations # (None)
     dirichlet_alpha: float = 0.03 # (0.3)
     dirichlet_epsilon: float = 0.25 # (0.25)
     temp_scheduler_type: str = "linear" # linear | constant | exponential # (linear)
-    temp_max_step: int = 15 # temperature = 1 until step temp_step_max in every game # (30)
-    temp_min_step: int = 20 # temperature = 0 from step temp_step_min until the end of the game # (10)
+    temp_max_step: int = 2 # temperature = 1 until step temp_step_max in every game # (30)
+    temp_min_step: int = 2 # temperature = 0 from step temp_step_min until the end of the game # (10)
     # TRAINING settings
-    iterations: int = 2 # (30)
-    episodes: int = 10 # (100)
-    epochs: int = 5 # (10)
+    iterations: int = 30 # (30)
+    episodes: int = 200 # (100)
+    epochs: int = 10 # (10)
     batch_size: int = 64 # (64)
     learning_rate: float = 0.001 # (0.001)
     device: str = "cpu"
@@ -280,6 +281,10 @@ class TicTacToeNet(PolicyValueNetwork):
 
     def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
         """ Forward through the network and outputs (logits of probabilitites, value). """
+
+        if input.ndim == 2: # need to add batch dim to a single input 
+            input = input.unsqueeze(0)
+
         x = self.flatten(input)
         x = F.relu(self.bn1(self.fc1(x)))
         x = F.relu(self.bn2(self.fc2(x)))
