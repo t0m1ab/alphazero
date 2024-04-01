@@ -72,9 +72,9 @@ def AZ_vs_Greedy_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = 
     n = 6
 
     nn = OthelloNet(n=n, device="cpu") # cuda or mps device will not work for parallel games
-    # nn = OthelloNet.from_pretrained(model_name="alphazero-othello-6x6-dirtemp")
+    # nn = OthelloNet.from_pretrained(model_name="alphazero-othello")
     player1 = AlphaZeroPlayer(compute_time=0.2, nn=nn, verbose=verbose)
-    player2 = RandomPlayer()
+    player2 = GreedyPlayer()
     board = OthelloBoard(n=n)
 
     arena = Arena(player1, player2, board)

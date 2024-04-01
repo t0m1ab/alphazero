@@ -52,7 +52,7 @@ class HumanPlayer(Player):
         else:
             raise ValueError(f"Unknown move format {self.move_format}...")
     
-    def get_move(self, board: Board, temp: float = None) -> Action:
+    def get_move(self, board: Board, temp: float = None) -> tuple[Action, dict[Action, float], dict[Action, float]]:
 
         move = None
         while move is None: # UI loop
@@ -70,7 +70,7 @@ class HumanPlayer(Player):
                     print("Illegal move!")
                     move = None
         
-        return move
+        return move, None, None, None
 
 
 class RandomPlayer(Player):
@@ -89,10 +89,10 @@ class RandomPlayer(Player):
             verbose=self.verbose,
         )
     
-    def get_move(self, board: Board, temp: float = None) -> Action:
+    def get_move(self, board: Board, temp: float = None) -> tuple[Action, dict[Action, float], dict[Action, float]]:
         if self.lock_time is not None: # for display purposes for example
             sleep(self.lock_time)
-        return board.get_random_move()
+        return board.get_random_move(), None, None, None
     
 
 class GreedyPlayer(Player):
@@ -109,7 +109,7 @@ class GreedyPlayer(Player):
             verbose=self.verbose,
         )
     
-    def get_move(self, board: Board, temp: float = None) -> Action:
+    def get_move(self, board: Board, temp: float = None) -> tuple[Action, dict[Action, float], dict[Action, float]]:
         """ Returns the move that maximizes the score of the board for the current player. """
 
         moves = board.get_moves()
@@ -120,7 +120,7 @@ class GreedyPlayer(Player):
             cloned_board.play_move(move)
             move2score[move] = -cloned_board.get_score() # the score returned is from the viewpoint of the other player
         
-        return fair_max(move2score.items(), key=lambda x: x[1])[0]
+        return fair_max(move2score.items(), key=lambda x: x[1])[0], None, None, None
 
 
 class MCTSPlayer(Player):
@@ -155,10 +155,19 @@ class MCTSPlayer(Player):
         """ Maintain the root node synchronized with the current state of the board. """
         self.mct.change_root(move)
     
-    def get_move(self, board: Board, temp: float = 0, return_action_probs: bool = False) -> Action:
+    def get_move(
+            self, 
+            board: Board, 
+            temp: float = 0,
+        ) -> tuple[Action, dict[Action, float], dict[Action, float]]:
         """ 
         Perform MCTS as long as the constraint (n_sim or compute_time) is not reached then select and return the best action.
         temp is the temperature parameter controlling the level of exploration of the MCTS (acts over the action probs)
+
+        RETURNS:
+            - best_action: the action selected by the player
+            - action_probs: the action probabilities computed by the MCTS used to select the best action
+            - prior_probs: the prior probabilities given by a possible neural network
         """
 
         if board.is_game_over():
@@ -172,17 +181,14 @@ class MCTSPlayer(Player):
         )
 
         # select best action
-        action_probs = self.mct.get_action_probs(board, temp)
+        action_probs, visit_counts = self.mct.get_action_probs(board, temp)
         items = list(action_probs.items())
         if len(items) == 1: # only one action (if temp=0 for example)
             best_action = items[0][0]
         else: # need to sample an action according to the action probs
             best_action = items[np.random.choice(len(items), p=[prob for (_, prob) in items])][0]
         
-        if return_action_probs:
-            return best_action, action_probs
-        else:
-            return best_action
+        return best_action, action_probs, visit_counts, self.mct.get_prior_probs()
     
     def get_stats_after_move(self) -> dict[str, int|float]:
         n_rollouts, simulation_time = self.mct.get_stats()

@@ -192,12 +192,15 @@ class Board():
         """ Display the current state of the board in PIXEL mode. """
         raise NotImplementedError
     
-    def display(self, indexes: bool = True, filename: str = None, mode: str = None) -> None:
+    def display(self, show_indexes: bool = True, infos: dict[dict] = None, filename: str = None, mode: str = None) -> None:
         """ 
         Displays the board according to the specified mode.
 
         ARGUMENTS:
-            - indexes: if True, the indexes of the rows and columns are displayed on the board.
+            - show_indexes: if True, the indexes of the rows and columns are displayed on the board.
+            - infos: additional information to display in specific cells of the board.
+                Must contains dicts where the keys are the coordinates of the cells and the values are the info to display.
+                ex: {"info1": {(0,0): 0.1, (1,2): 0.2}, "info2": {(2,0): 41, (2,1): 42, (1,0): 43}}
             - filename: the name of the file in which the image of the board will be saved.
             - mode: the display mode (should be a value of DisplayMode).
         """
@@ -211,9 +214,9 @@ class Board():
             raise ValueError(f"Unknown display mode: {mode}")
 
         if mode == DisplayMode.HUMAN:
-            self.human_display(indexes, filename)
+            self.human_display(show_indexes, infos, filename)
         elif mode == DisplayMode.PIXEL:
-            self.pixel_display(indexes, filename)
+            self.pixel_display(show_indexes, filename)
         else:
             raise NotImplementedError(f"Display mode {mode} is not implemented yet.")
 
@@ -245,8 +248,11 @@ class Player():
         pass
 
     @abstractmethod
-    def get_move(self, board: Board, temp: float = None) -> Action | None:
-        """ Returns the best move for the player given the current board state. """
+    def get_move(self, board: Board, temp: float = None) -> tuple[Action, dict[Action, float], dict[Action, float], dict[Action, float]]:
+        """
+        Returns the best move for the player given the current board state.
+        Can also returns statistics on the legal moves (action probs, visit counts, prior probs) if the players computes them.
+        """
         raise NotImplementedError
 
     def get_stats_after_move(self) -> dict[str, int|float]:

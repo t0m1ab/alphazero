@@ -56,6 +56,7 @@ class OthelloBoard(Board):
     CONFIG = OthelloConfig
     DIRECTIONS = [(1,1), (1,0), (1,-1), (0,-1), (-1,-1), (-1,0), (-1,1), (0,1)]
     COLORS = {-1: "white", 0: "green", 1: "black"}
+    TEXT_COLOR = "blue"
 
     def __init__(
             self, 
@@ -223,7 +224,7 @@ class OthelloBoard(Board):
         else: # return the id of the player who has the positive score
             return self.player if score > 0 else -self.player
         
-    def human_display(self, indexes: bool = True, filename: str = None) -> None:
+    def human_display(self, show_indexes: bool = True, infos: dict[dict] = None, filename: str = None) -> None:
         """ 
         Displays the board in a grid, each cell being filled with a circle if there is a piece on it.
         """
@@ -242,27 +243,42 @@ class OthelloBoard(Board):
                         xy=(col+0.5, self.n - row - 0.5), # reverse the row index to match numpy array indexing
                         radius=0.4, 
                         color=OthelloBoard.COLORS[self.grid[row][col]], 
-                        zorder=10
+                        zorder=1,
                     ))
         
-        if indexes:
+        plt.grid(True, color="black", linewidth=1)
+        # plt.axis('off') # unnecessary if we remove the frame as below
+        
+        if show_indexes:
             eps = 0.15
             for row in range(self.n):
                 ax.text(x=eps, y=self.n-row-eps, s=f"{row}", fontsize=10, ha='center', va='center', color="black")
             for col in range(1, self.n):
                 ax.text(x=col+eps, y=self.n-eps, s=f"{col}", fontsize=10, ha='center', va='center', color="black")
         
-        plt.grid(True, color="black", linewidth=1)
-        # plt.axis('off') # unnecessary if we remove the frame as below
+        if infos is not None:
+            for info_idx, (info_name, info_dict) in enumerate(infos.items()):
+                for (row, col), value in info_dict.items():
+                    ax.text(
+                        x = col + 0.5, 
+                        y = 3 - row - 0.45 - (float(info_idx)*0.15), 
+                        s = f"{info_name}={value:.3f}" if isinstance(value, float) else f"{info_name}={value}",
+                        fontsize = 5,
+                        fontweight = "bold",
+                        ha = "center", 
+                        color = OthelloBoard.TEXT_COLOR, 
+                        zorder = 2,
+                    )
 
         # save the image
         extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted()) # remove the frame in the saved image
-        Path(self.display_dir).mkdir(parents=True, exist_ok=True)
+        save_dir = os.path.join(self.display_dir, f"{self.game}_human")
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
         filename = filename if filename is not None else f"{self.game}.png"
-        plt.savefig(os.path.join(self.display_dir, filename), bbox_inches=extent, dpi=150)
+        plt.savefig(os.path.join(save_dir, filename), bbox_inches=extent, dpi=300)
         plt.close()
 
-    def pixel_display(self, indexes: bool = True, filename: str = None) -> None:
+    def pixel_display(self, show_indexes: bool = True, filename: str = None) -> None:
         """ 
         Displays the board in a grid, each cell being a pixel.
         """
@@ -277,9 +293,10 @@ class OthelloBoard(Board):
         board_image = Image.fromarray(board_rgb, "RGB")
 
         # save the image
-        Path(self.display_dir).mkdir(parents=True, exist_ok=True)
+        save_dir = os.path.join(self.display_dir, f"{self.game}_pixel")
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
         filename = filename if filename is not None else f"{self.game}.png"
-        board_image.save(os.path.join(self.display_dir, filename))
+        board_image.save(os.path.join(save_dir, filename))
 
 
 class OthelloNet(PolicyValueNetwork):

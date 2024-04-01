@@ -228,7 +228,7 @@ class AlphaZeroTrainer:
                 temp = self.temp_scheduler[move_counter]
                 
                 # get best move for the current player
-                move, move_probs = self.az_player.get_move(self.board, temp=temp, return_action_probs=True)
+                move, move_probs, _, _ = self.az_player.get_move(self.board, temp=temp)
 
                 # store the sample in the memory
                 memory_buffer.append(Sample(

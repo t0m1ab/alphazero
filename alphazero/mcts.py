@@ -85,24 +85,35 @@ class MCT():
     def get_stats(self) -> tuple[int, float]:
         return self.n_rollouts, self.simulation_time
     
-    def get_action_probs(self, board: Board, temp: float = 0) -> dict[Action, float]:
+    def get_prior_probs(self) -> dict[Action, float]:
+        """ 
+        Return the prior probs of the children of the root node.
+        This method is only useful when the evaluation method is set to TreeEval.NEURAL otherwise it returns None for each move.
+        """
+        return {move: node.P for move, node in self.root.children.items()}
+
+    def get_action_probs(self, board: Board, temp: float = 0) -> tuple[dict[Action, float], dict[Action, int]]:
         """ 
         Returns a probs distribution on the legal actions according to the current state of the MCT.
         Returns None if the root node has no children (no legal move meaning the game doesn't allow to pass).
         """
         
         if len(self.root.children) == 0:
-            return {board.pass_move: 1} # board.pass_move is None if the game doesn't allow to pass (see Board.__init__)
+            return {board.pass_move: 1.} # board.pass_move is None if the game doesn't allow to pass (see Board.__init__)
+        
+        # print("\nRoot children:")
+        # for move, node in self.root.children.items():
+        #     print(f"{move} -> {node}")
+        
+        visit_counts = {move: int(node.N) for move, node in self.root.children.items()}
 
         if temp == 0: # return the move with the highest visit count
-            # for move, node in self.root.children.items():
-            #     print(f"{move} -> {node}")
             best_move, _ = fair_max(self.root.children.items(), key=lambda x: x[1].N)
-            return {best_move: 1}
+            return {best_move: 1}, visit_counts
         else: # return a distribution of the moves according to their visit count
             move_values = {move: node.N ** (1. / temp) for move, node in self.root.children.items()}
             sum_values = sum(move_values.values())
-            return {move: value / sum_values for move, value in move_values.items()}
+            return {move: value / sum_values for move, value in move_values.items()}, visit_counts
     
     def change_root(self, move: Action) -> None:
         """ Change the root of the tree to the node corresponding to the new state of the board. """

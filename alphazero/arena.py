@@ -39,8 +39,9 @@ class Arena():
             save_frames: bool = False,
             return_results: bool = False,
             show_indexes: bool = True,
+            show_probs: bool = False,
             verbose: bool = False,
-        ) -> int:
+        ) -> dict:
 
         player_idx = 1 if player2_starts else 0
 
@@ -50,7 +51,10 @@ class Arena():
             print(f"> Player 1 = {self.player1.__class__.__name__}")
             print(f"> Player 2 = {self.player2.__class__.__name__}")
         if display:
-            self.board.display(indexes=show_indexes, filename=f"{self.board.game}_0.png" if save_frames else None)
+            self.board.display(
+                show_indexes=show_indexes,
+                filename=f"{self.board.game}_0.png" if save_frames else None,
+            )
 
         # initialize the board and the players
         self.board.reset()
@@ -62,7 +66,7 @@ class Arena():
         while not self.board.is_game_over():
             
             # get best move for the current player
-            move = players[player_idx].get_move(self.board)
+            move, action_probs, visit_counts, prior_probs = players[player_idx].get_move(self.board, temp=0.3)
 
             # play the move on the board
             self.board.play_move(move)
@@ -75,7 +79,19 @@ class Arena():
                     msg += f"{k} = {v:.3f} | " if type(v) == float else f"{k} = {v} | "
                 print(msg[:-3])
             if display:
-                self.board.display(indexes=show_indexes, filename=f"{self.board.game}_{round_idx}.png" if save_frames else None)
+                infos = {} 
+                if show_probs:                   
+                    if action_probs is not None:
+                        infos["P[mcts]"] = action_probs
+                    if prior_probs is not None:
+                        infos["P[nn]"] = prior_probs
+                    if visit_counts is not None:
+                        infos["N"] = visit_counts
+                self.board.display(
+                    show_indexes=show_indexes,
+                    infos=None if len(infos) == 0 else infos,
+                    filename=f"{self.board.game}_{round_idx}.png" if save_frames else None,
+                )
 
             # update internal state of players
             players[player_idx].apply_move(move, player=-self.board.player)

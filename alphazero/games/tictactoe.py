@@ -56,6 +56,7 @@ class TicTacToeBoard(Board):
     CONFIG = TicTacToeConfig
     DIRECTIONS = [(1,1), (1,0), (1,-1), (0,-1), (-1,-1), (-1,0), (-1,1), (0,1)]
     COLORS = {-1: "white", 0: "silver", 1: "black"}
+    TEXT_COLOR = "red"
 
     def __init__(
             self, 
@@ -178,13 +179,9 @@ class TicTacToeBoard(Board):
         else: # draw
             return 0
         
-    def human_display(self, indexes: bool = True, filename: str = None) -> None:
+    def human_display(self, show_indexes: bool = True, infos: dict[dict] = None, filename: str = None) -> None:
         """ 
         Displays the board in a grid, each cell being filled with a circle if there is a piece on it.
-
-        ARGUMENTS:
-            - indexes: if True, the indexes of the rows and columns are displayed on the board.
-            - filename: the name of the file in which the image of the board will be saved.
         """
 
         # create the image of the board
@@ -201,27 +198,42 @@ class TicTacToeBoard(Board):
                         xy=(col+0.5, 3 - row - 0.5), # reverse the row index to match numpy array indexing
                         radius=0.4, 
                         color=TicTacToeBoard.COLORS[self.grid[row][col]], 
-                        zorder=10
+                        zorder=1
                     ))
+
+        # plt.grid(True, color="black", linewidth=1)
+        # plt.axis('off') # unnecessary if we remove the frame as below
         
-        if indexes:
+        if show_indexes:
             eps = 0.15
             for row in range(3):
                 ax.text(x=eps, y=3-row-eps, s=f"{row}", fontsize=10, ha='center', va='center', color="black")
             for col in range(1, 3):
                 ax.text(x=col+eps, y=3-eps, s=f"{col}", fontsize=10, ha='center', va='center', color="black")
         
-        # plt.grid(True, color="black", linewidth=1)
-        # plt.axis('off') # unnecessary if we remove the frame as below
+        if infos is not None:
+            for info_idx, (info_name, info_dict) in enumerate(infos.items()):
+                for (row, col), value in info_dict.items():
+                    ax.text(
+                        x = col + 0.5, 
+                        y = 3 - row - 0.45 - (float(info_idx)*0.15), 
+                        s = f"{info_name}={value:.3f}" if isinstance(value, float) else f"{info_name}={value}",
+                        fontsize = 5, 
+                        fontweight = "bold",
+                        ha = "center", 
+                        color = TicTacToeBoard.TEXT_COLOR, 
+                        zorder = 2,
+                    )
 
         # save the image
         extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted()) # remove the frame in the saved image
-        Path(self.display_dir).mkdir(parents=True, exist_ok=True)
+        save_dir = os.path.join(self.display_dir, f"{self.game}_human")
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
         filename = filename if filename is not None else f"{self.game}.png"
-        plt.savefig(os.path.join(self.display_dir, filename), bbox_inches=extent, dpi=150)
+        plt.savefig(os.path.join(save_dir, filename), bbox_inches=extent, dpi=300)
         plt.close()
     
-    def pixel_display(self, indexes: bool = True, filename: str = None) -> None:
+    def pixel_display(self, show_indexes: bool = True, filename: str = None) -> None:
         """ 
         Displays the board in a grid, each cell being a pixel.
         """
@@ -236,9 +248,10 @@ class TicTacToeBoard(Board):
         board_image = Image.fromarray(board_rgb, "RGB")
 
         # save the image
-        Path(self.display_dir).mkdir(parents=True, exist_ok=True)
+        save_dir = os.path.join(self.display_dir, f"{self.game}_pixel")
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
         filename = filename if filename is not None else f"{self.game}.png"
-        board_image.save(os.path.join(self.display_dir, filename))
+        board_image.save(os.path.join(save_dir, filename))
 
 
 class TicTacToeNet(PolicyValueNetwork):

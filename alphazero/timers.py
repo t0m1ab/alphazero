@@ -41,7 +41,7 @@ class SelfPlayTimer():
         start_time = time()
         while not self.board.is_game_over():
             # get best move for the current player
-            move, _ = self.az_player.get_move(self.board, return_action_probs=True)
+            move = self.az_player.get_move(self.board)[0]
             # play the move on the board
             self.board.play_move(move)
             # update internal state of the player
