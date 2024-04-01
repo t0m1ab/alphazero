@@ -1,4 +1,5 @@
-from alphazero.base import MoveFormat
+from alphazero.base import MoveFormat, DataTransf
+from alphazero.utils import dotdict
 from alphazero.schedulers import ConstantTemperatureScheduler, LinearTemperatureScheduler
 from alphazero.games.othello import OthelloConfig, OthelloBoard, OthelloNet
 from alphazero.games.tictactoe import TicTacToeConfig, TicTacToeBoard, TicTacToeNet
@@ -6,6 +7,7 @@ from alphazero.games.connect4 import Connect4Config, Connect4Board, Connect4Net
 from alphazero.games.othello import main as othello_main
 from alphazero.games.tictactoe import main as tictactoe_main
 from alphazero.games.connect4 import main as connect4_main
+
 
 # GAME REGISTERS
 
@@ -33,9 +35,25 @@ MOVE_FORMATS_REGISTER = {
     "connect4": MoveFormat.COL,
 }
 
+DATA_AUGMENT_STRATEGIES = {
+    "othello": dotdict({
+        "reflection": DataTransf.REFLECT_H,
+        "rotations": [DataTransf.ROTATE_90, DataTransf.ROTATE_180, DataTransf.ROTATE_270],
+    }),
+    "connect4": dotdict({
+        "reflection": DataTransf.REFLECT_H,
+        "rotations": [],
+    }),
+    "tictactoe": dotdict({
+        "reflection": DataTransf.REFLECT_H,
+        "rotations": [DataTransf.ROTATE_90, DataTransf.ROTATE_180, DataTransf.ROTATE_270],
+    })
+}
+
+
 # TRAINING REGISTER
 
-TEMP_SCHEDULERS_REGISTER = {
+TEMP_SCHEDULERS = {
     "constant": ConstantTemperatureScheduler,
     "linear": LinearTemperatureScheduler,
 }
@@ -47,8 +65,9 @@ def main():
     boards_keys = set(BOARDS_REGISTER.keys())
     networks_keys = set(NETWORKS_REGISTER.keys())
     move_formats_keys = set(MOVE_FORMATS_REGISTER.keys())
+    data_augm_strat = set(DATA_AUGMENT_STRATEGIES.keys())
 
-    assert configs_keys == boards_keys == networks_keys == move_formats_keys, "Game registers have different keys."
+    assert configs_keys == boards_keys == networks_keys == move_formats_keys == data_augm_strat, "Game registers have different keys."
 
     othello_main()
     tictactoe_main()

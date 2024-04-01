@@ -11,6 +11,7 @@ from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORK
 class SelfPlayTimer():
     """
     Timer to measure the average time it takes to complete a self-play game.
+    Neglect data augmentation time as it is often very fast compared to the game simulations.
     """
 
     def __init__(self, game: str, config: Config = None):

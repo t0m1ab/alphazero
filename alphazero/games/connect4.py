@@ -35,6 +35,7 @@ class Connect4Config(Config):
     epochs: int = 10 # (10)
     batch_size: int = 64 # (64)
     learning_rate: float = 0.001 # (0.001)
+    data_augmentation: bool = True
     device: str = "cpu"
     # SAVE settings
     save: bool = False
@@ -429,12 +430,22 @@ class Connect4Net(PolicyValueNetwork):
 
         return norm_probs
     
-    def to_neural_array(self, move_probs: dict[Action: float]) -> np.ndarray:
+    def to_neural_output(self, move_probs: dict[Action: float]) -> np.ndarray:
         """ Returns the probabilitites of move_probs in the format given as output by the network. """
         pi = np.zeros(self.action_size)
         for move, prob in move_probs.items():
             pi[move] = prob
         return pi
+    
+    def reflect_neural_output(self, neural_output: np.ndarray, axis: int) -> np.ndarray:
+        """
+        Take a neural output and reflect it horizontally independenlty of <axis> because the board has no vertical symmetry property.
+        """
+
+        if not neural_output.size == self.action_size:
+            raise ValueError(f"Neural output should have size {self.action_size}, but has size {neural_output.size}")
+
+        return np.flip(neural_output)
     
 
 def main():

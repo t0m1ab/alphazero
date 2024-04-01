@@ -40,10 +40,14 @@ class LinearTemperatureScheduler(TemperatureScheduler):
             return 1 - (step - self.temp_max_step) / (self.temp_min_step - self.temp_max_step)
 
 
-if __name__ == "__main__":
+def main():
     
     _ = ConstantTemperatureScheduler(10, 10, 100)
     print("ConstantTemperatureScheduler created successfully.")
 
     _ = LinearTemperatureScheduler(10, 20, 100)
     print("LinearTemperatureScheduler created successfully.")
+
+
+if __name__ == "__main__":
+    main()

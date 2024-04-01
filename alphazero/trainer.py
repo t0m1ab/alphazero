@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Callable
 import argparse
 import json
 import numpy as np
@@ -9,12 +10,18 @@ from collections import defaultdict
 from datetime import timedelta
 
 import alphazero
-from alphazero.base import Config
+from alphazero.base import Config, DataTransf
 from alphazero.utils import dotdict, push_model_to_hf_hub, DEFAULT_CONFIGS_PATH, DEFAULT_MODELS_PATH
 from alphazero.players import AlphaZeroPlayer
-from alphazero.games.registers import CONFIGS_REGISTER, BOARDS_REGISTER, NETWORKS_REGISTER, TEMP_SCHEDULERS_REGISTER
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
 from alphazero.timers import SelfPlayTimer, NeuralTimer
+from alphazero.games.registers import (
+    CONFIGS_REGISTER, 
+    BOARDS_REGISTER, 
+    NETWORKS_REGISTER, 
+    TEMP_SCHEDULERS,
+    DATA_AUGMENT_STRATEGIES,
+)
 
 
 class Sample():
@@ -30,6 +37,7 @@ class Sample():
             outcome: int = None,
             episode_idx: int = None,
             move_idx: int = None,
+            transformation: str = None,
         ) -> None:
         """
         ARGUMENTS:
@@ -37,6 +45,9 @@ class Sample():
             - pi: policy vector given by the AlphaZero MCTS procedure for the current state.
             - to_play: id of the player about to play.
             - outcome: outcome of the associated game (id of the winner (1 or -1) and 0 if draw).
+            - episode_idx: index of the episode in which the sample was generated.
+            - move_idx: index of the move in the episode.
+            - transformation: nature of the transformation applied to create the sample (None if it is an original sample)
         """
         self.state = state
         self.pi = pi
@@ -44,6 +55,7 @@ class Sample():
         self.outcome = outcome
         self.episode_idx = episode_idx
         self.move_idx = move_idx
+        self.transformation = transformation
     
     def __str__(self) -> str:
         return f"Sample( \
@@ -52,13 +64,54 @@ class Sample():
             \n\tplayer={self.player} \
             \n\toutcome={self.outcome} \
             \n\tepisode_idx={self.episode_idx} \
-            \n\tplayer_idx={self.move_idx} \
+            \n\tmove_idx={self.move_idx} \
+            \n\ttransformation={self.transformation} \
         \n)"
     
     def normalize(self) -> None:
         """ Normalize the sample to self.player = 1. """
         self.state = self.state * self.player
         self.outcome = self.outcome * self.player
+    
+    def create_reflection_twin(self, reflection: Callable, mode: DataTransf) -> "Sample":
+        """ Return a reflected version of <self> using the reflection function <reflection> in mode <mode>. """
+
+        if not mode in [DataTransf.REFLECT_H, DataTransf.REFLECT_V]:
+            raise ValueError(f"Reflection mode must be either {DataTransf.REFLECT_H} or {DataTransf.REFLECT_V}.")
+        
+        axis = 1 if mode == DataTransf.REFLECT_H else 0
+
+        return Sample(
+            state=np.flip(self.state.copy(), axis=axis),
+            pi=reflection(self.pi.copy(), axis=axis),
+            player=self.player,
+            outcome=self.outcome,
+            episode_idx=self.episode_idx,
+            move_idx=self.move_idx,
+            transformation=mode if self.transformation is None else f"{self.transformation}+{mode}",
+        )
+    
+    def create_rotation_twin(self, rotation: Callable, mode: DataTransf) -> "Sample":
+        """ Return a rotated version of <self> using the rotation function <rotation> in mode <mode>. """
+
+        if not mode in [DataTransf.ROTATE_90, DataTransf.ROTATE_180, DataTransf.ROTATE_270]:
+            raise ValueError(f"Rotation mode must be either {DataTransf.ROTATE_90}, {DataTransf.ROTATE_180} or {DataTransf.ROTATE_270}.")
+
+        angle = 90
+        if mode == DataTransf.ROTATE_180:
+            angle = 180
+        elif mode == DataTransf.ROTATE_270:
+            angle = 270
+
+        return Sample(
+            state=np.rot90(self.state.copy(), k=angle//90),
+            pi=rotation(self.pi.copy(), angle=angle),
+            player=self.player,
+            outcome=self.outcome,
+            episode_idx=self.episode_idx,
+            move_idx=self.move_idx,
+            transformation=mode if self.transformation is None else f"{self.transformation}+{mode}",
+        )
 
 
 class AlphaZeroTrainer:
@@ -72,6 +125,8 @@ class AlphaZeroTrainer:
         self.nn = None # PolicyValueNetwork
         self.nn_twin = None # PolicyValueNetwork object: nn clone to use for specific training methods
         self.az_player = None # AlphaZeroPlayer 
+        self.temp_scheduler = None # TemperatureScheduler: temperature scheduler for the game
+        self.data_augment_strategy = None # dict: data augmentation strategy for the game
         self.memory = None # list[Sample]: list storing normalize samples to use nn training
         self.verbose = verbose # bool
         self.loss_values = defaultdict(dict) # store loss values for each iteration and epoch
@@ -178,10 +233,10 @@ class AlphaZeroTrainer:
                 # store the sample in the memory
                 memory_buffer.append(Sample(
                     state=self.board.grid.copy(), 
-                    pi=self.nn.to_neural_array(move_probs),
+                    pi=self.nn.to_neural_output(move_probs),
                     player=self.board.player,
                     episode_idx=episode_idx,
-                    move_idx=len(memory_buffer),
+                    move_idx=move_counter,
                 ))
 
                 # play the move on the board
@@ -206,7 +261,19 @@ class AlphaZeroTrainer:
                 pbar.set_postfix({"n_samples": len(self.memory)})
         
         del memory_buffer
-    
+
+        if self.config.data_augmentation: # augment the memory with reflections and rotations
+            augmented_samples = []
+            for sample in tqdm(self.memory, desc=f"Data augmentation ({len(self.memory)} samples)") if self.verbose else self.memory:
+                reflected_sample = sample.create_reflection_twin(self.nn.reflect_neural_output, mode=self.data_augment_strategy.reflection)
+                augmented_samples.append(reflected_sample)
+                for rot_mode in self.data_augment_strategy.rotations: # 90°, 180° and 270° rotations
+                    augmented_samples.append(sample.create_rotation_twin(self.nn.rotate_neural_output, mode=rot_mode))
+                    augmented_samples.append(reflected_sample.create_rotation_twin(self.nn.rotate_neural_output, mode=rot_mode))
+            self.memory += augmented_samples
+        
+        self.print(f"Total number of samples: {len(self.memory)}")
+           
     def _memory_generator(self, n_batches: int):
         """ Generator to iterate over the samples in the memory with the required batch size. """
 
@@ -343,11 +410,12 @@ class AlphaZeroTrainer:
             dirichlet_epsilon=self.config.dirichlet_epsilon,
             verbose=verbose
         )
-        self.temp_scheduler = TEMP_SCHEDULERS_REGISTER[self.config.temp_scheduler_type](
+        self.temp_scheduler = TEMP_SCHEDULERS[self.config.temp_scheduler_type](
             temp_max_step=self.config.temp_max_step,
             temp_min_step=self.config.temp_min_step,
             max_steps=self.board.max_moves,
         )
+        self.data_augment_strategy = DATA_AUGMENT_STRATEGIES[self.game] if self.config.data_augmentation else None
         self.loss_values = defaultdict(dict) # ensure that loss values are reset
 
         # print the configuration and save it in the new model directory

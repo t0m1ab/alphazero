@@ -48,6 +48,15 @@ class DisplayMode(Enum):
     PIXEL = "pixel"
 
 
+class DataTransf(Enum):
+    """ Enum to indicate a board transformation for data augmentation. """
+    REFLECT_H = "reflection-horizontal"
+    REFLECT_V = "reflection-vertical"
+    ROTATE_90 = "rotation-90"
+    ROTATE_180 = "rotation-180"
+    ROTATE_270 = "rotation-270"
+
+
 @dataclass
 class Config():
     """ Base class to define configuration to train AlphaZero. """
@@ -56,12 +65,18 @@ class Config():
     # PLAYER settings
     simulations: int = None
     compute_time: float = None
+    dirichlet_alpha: float = 0.03
+    dirichlet_epsilon: float = 0.25
+    temp_scheduler_type: str = "linear" # linear | constant | exponential
+    temp_max_step: int = 15 # temperature = 1 until step temp_step_max in every game
+    temp_min_step: int = 20 # temperature = 0 from step temp_step_min until the end of the game
     # TRAINING settings
     iterations: int = None
     episodes: int = None
     epochs: int = None
     batch_size: int = None
     learning_rate: float = None
+    data_augmentation: bool = False
     device: str = None
     # SAVE settings
     save: bool = True
@@ -342,8 +357,28 @@ class PolicyValueNetwork(nn.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def to_neural_array(self, move_probs: dict[Action: float]) -> np.ndarray:
+    def to_neural_output(self, move_probs: dict[Action: float]) -> np.ndarray:
         """ Returns the probabilitites of move_probs in the format given as output by the network. """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def reflect_neural_output(self, neural_output: np.ndarray, axis: int) -> np.ndarray:
+        """
+        Take a neural output and reflect it along the specified axis. 
+        * axis = 0: reflect vertically
+        * axis = 1: reflect horizontally
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def rotate_neural_output(self, neural_output: np.ndarray, angle: int) -> np.ndarray:
+        """ 
+        Take a neural output and rotate it with <d90> successive 90° counterclockwise rotations. 
+        * d90 = 1 -> 90° rotation
+        * d90 = 2 -> 180° rotation
+        * d90 = 3 -> 270° rotation
+        * d90 = 4 -> 360° rotation (identity)
+        """
         raise NotImplementedError
 
 

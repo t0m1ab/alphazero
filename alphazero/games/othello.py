@@ -34,6 +34,7 @@ class OthelloConfig(Config):
     epochs: int = 5 # (10)
     batch_size: int = 64 # (64)
     learning_rate: float = 0.001 # (0.001)
+    data_augmentation: bool = True
     device: str = "cpu"
     # SAVE settings
     save: bool = False
@@ -397,7 +398,7 @@ class OthelloNet(PolicyValueNetwork):
 
         return norm_probs
     
-    def to_neural_array(self, move_probs: dict[Action: float]) -> np.ndarray:
+    def to_neural_output(self, move_probs: dict[Action: float]) -> np.ndarray:
         """ Returns the probabilitites of move_probs in the format given as output by the network. """
         pi = np.zeros(self.action_size)
         for move, prob in move_probs.items():
@@ -406,6 +407,44 @@ class OthelloNet(PolicyValueNetwork):
             else:
                 pi[move[0] * self.n + move[1]] = prob
         return pi
+    
+    def reflect_neural_output(self, neural_output: np.ndarray, axis: int) -> np.ndarray:
+        """
+        Take a neural output and reflect it along the specified axis. 
+        * axis = 0: reflect vertically
+        * axis = 1: reflect horizontally
+        """
+
+        if not neural_output.size == self.action_size:
+            raise ValueError(f"Neural output should have size {self.action_size}, but has size {neural_output.size}")
+        
+        neural_board = neural_output[:(self.action_size - 1)].reshape((self.n, self.n))
+        neural_tail = neural_output[(self.action_size - 1):]
+        neural_ouput_reflection = np.zeros_like(neural_output)
+        neural_ouput_reflection[:(self.action_size - 1)] = np.flip(neural_board, axis=axis).flatten()
+        neural_ouput_reflection[(self.action_size - 1):] = neural_tail
+
+        return neural_ouput_reflection
+    
+    def rotate_neural_output(self, neural_output: np.ndarray, angle: int) -> np.ndarray:
+        """ 
+        Take a neural output and rotate it with <d90> successive 90° counterclockwise rotations. 
+        * d90 = 1 -> 90° rotation
+        * d90 = 2 -> 180° rotation
+        * d90 = 3 -> 270° rotation
+        * d90 = 4 -> 360° rotation (identity)
+        """
+
+        if not neural_output.size == self.action_size:
+            raise ValueError(f"Neural output should have size {self.action_size}, but has size {neural_output.size}")
+        
+        neural_board = neural_output[:(self.action_size - 1)].reshape((self.n, self.n))
+        neural_tail = neural_output[(self.action_size - 1):]
+        neural_ouput_rotation = np.zeros_like(neural_output)
+        neural_ouput_rotation[:(self.action_size - 1)] = np.rot90(neural_board, k=angle//90).flatten()
+        neural_ouput_rotation[(self.action_size - 1):] = neural_tail
+
+        return neural_ouput_rotation
 
 
 def main():
