@@ -407,24 +407,6 @@ class Connect4Net(PolicyValueNetwork):
 
         return F.log_softmax(probs, dim=1), torch.tanh(value)
     
-    def predict(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
-        """ Returns a policy and a value from the input state. """
-        self.eval()
-        with torch.no_grad():
-            log_probs, v =  self.forward(input)
-        return torch.exp(log_probs), v
-
-    def evaluate(self, board: Board) -> tuple[np.ndarray, float]:
-        """ 
-        Evaluation of the state of the cloned board from the viewpoint of the player that needs to play. 
-        A PolicyValueNetwork always evaluates the board from the viewpoint of player with id 1.
-        Therefore, the board should be switched if necessary.
-        """
-        input = torch.tensor(board.player * board.grid, dtype=torch.float, device=self.device)
-        torch_probs, torch_v = self.predict(input)
-        probs = torch_probs.cpu().numpy().reshape(-1)
-        return probs, torch_v.cpu().item()
-
     def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:
         """ Returns the normalized probabilities over the legal moves. """
 

@@ -179,7 +179,7 @@ class MCT():
 
         return cloned_board.get_winner()
     
-    def nn_evaluation(self, cloned_board: Board, node: Node) -> tuple[dict[Action, float], int]:
+    def nn_evaluation(self, cloned_board: Board, node: Node) -> int:
         """ Perform ROLLOUT through nn evaluation from the current state of the board and returns the id of the winner. """
 
         if cloned_board.is_game_over():
@@ -197,7 +197,7 @@ class MCT():
     def back_propagate(self, node: Node, player_id: int, outcome: int) -> None:
         """ Perform the BACKPROPAGATION step: update the statistics of the nodes on the path from the selected node to the root. """
 
-        draw = (outcome == 0)
+        draw = (abs(outcome) < 1e-4) # useful if neural evaluation is too close to 0
 
         if draw:
             reward = 0

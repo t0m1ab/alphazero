@@ -342,20 +342,25 @@ class PolicyValueNetwork(nn.Module):
     def forward(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
         """ Forward through the network and outputs (logits of probabilitites, value). """
         raise NotImplementedError
-
-    @abstractmethod
+  
     def predict(self, input: torch.tensor) -> tuple[torch.tensor, torch.tensor]:
-        """ Returns the policy and value of the input state. """
-        raise NotImplementedError
-
-    @abstractmethod
+        """ Returns a policy and a value from the input state. """
+        self.eval()
+        with torch.no_grad():
+            torch_log_probs, torch_v =  self.forward(input)
+        return torch.exp(torch_log_probs), torch_v
+    
     def evaluate(self, board: Board) -> tuple[np.ndarray, float]:
         """ 
         Evaluation of the state of the cloned board from the viewpoint of the player that needs to play. 
         A PolicyValueNetwork always evaluates the board from the viewpoint of player with id 1.
         Therefore, the board should be switched if necessary.
         """
-        raise NotImplementedError
+        input = torch.tensor(board.player * board.grid, dtype=torch.float, device=self.device)
+        torch_log_probs, torch_v = self.predict(input)
+        log_probs = torch_log_probs.cpu().numpy().reshape(-1)
+        v = board.player * torch_v.cpu().item() # switch back the state evaluation if necessary
+        return log_probs, v
 
     @abstractmethod
     def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:
