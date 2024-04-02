@@ -50,11 +50,11 @@ class DisplayMode(Enum):
 
 class DataTransf(Enum):
     """ Enum to indicate a board transformation for data augmentation. """
-    REFLECT_H = "reflection-horizontal"
-    REFLECT_V = "reflection-vertical"
-    ROTATE_90 = "rotation-90"
-    ROTATE_180 = "rotation-180"
-    ROTATE_270 = "rotation-270"
+    REFLECT_H = "reflection_horizontal"
+    REFLECT_V = "reflection_vertical"
+    ROTATE_90 = "rotation_90"
+    ROTATE_180 = "rotation_180"
+    ROTATE_270 = "rotation_270"
 
 
 @dataclass

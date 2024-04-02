@@ -72,6 +72,7 @@ class Sample():
         """ Normalize the sample to self.player = 1. """
         self.state = self.state * self.player
         self.outcome = self.outcome * self.player
+        self.player = 1
     
     def create_reflection_twin(self, reflection: Callable, mode: DataTransf) -> "Sample":
         """ Return a reflected version of <self> using the reflection function <reflection> in mode <mode>. """
@@ -88,7 +89,7 @@ class Sample():
             outcome=self.outcome,
             episode_idx=self.episode_idx,
             move_idx=self.move_idx,
-            transformation=mode if self.transformation is None else f"{self.transformation}+{mode}",
+            transformation=mode.value if self.transformation is None else f"{self.transformation}+{mode.value}",
         )
     
     def create_rotation_twin(self, rotation: Callable, mode: DataTransf) -> "Sample":
@@ -110,7 +111,7 @@ class Sample():
             outcome=self.outcome,
             episode_idx=self.episode_idx,
             move_idx=self.move_idx,
-            transformation=mode if self.transformation is None else f"{self.transformation}+{mode}",
+            transformation=mode.value if self.transformation is None else f"{self.transformation}+{mode.value}",
         )
 
 
@@ -265,11 +266,12 @@ class AlphaZeroTrainer:
         if self.config.data_augmentation: # augment the memory with reflections and rotations
             augmented_samples = []
             for sample in tqdm(self.memory, desc=f"Data augmentation ({len(self.memory)} samples)") if self.verbose else self.memory:
-                reflected_sample = sample.create_reflection_twin(self.nn.reflect_neural_output, mode=self.data_augment_strategy.reflection)
-                augmented_samples.append(reflected_sample)
-                for rot_mode in self.data_augment_strategy.rotations: # 90°, 180° and 270° rotations
-                    augmented_samples.append(sample.create_rotation_twin(self.nn.rotate_neural_output, mode=rot_mode))
-                    augmented_samples.append(reflected_sample.create_rotation_twin(self.nn.rotate_neural_output, mode=rot_mode))
+                if sample.move_idx >= 2: # symmetries are likely to produce copies for the first moves
+                    reflected_sample = sample.create_reflection_twin(self.nn.reflect_neural_output, mode=self.data_augment_strategy.reflection)
+                    augmented_samples.append(reflected_sample)
+                    for rot_mode in self.data_augment_strategy.rotations: # 90°, 180° and 270° rotations
+                        augmented_samples.append(sample.create_rotation_twin(self.nn.rotate_neural_output, mode=rot_mode))
+                        augmented_samples.append(reflected_sample.create_rotation_twin(self.nn.rotate_neural_output, mode=rot_mode))
             self.memory += augmented_samples
         
         self.print(f"Total number of samples: {len(self.memory)}")
@@ -440,7 +442,7 @@ class AlphaZeroTrainer:
             
             # save loss values after each iteration
             self.save_player_loss(experiment_name)
-
+            
             if self.config.save_checkpoints: # save checkpoint in experiment_name/checkpoint/ directory
                 self.save_player_pt(
                     model_name=f"{experiment_name}-chkpt-{iter_idx+1}", 

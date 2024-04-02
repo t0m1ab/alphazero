@@ -66,7 +66,7 @@ class Arena():
         while not self.board.is_game_over():
             
             # get best move for the current player
-            move, action_probs, visit_counts, prior_probs = players[player_idx].get_move(self.board, temp=0.3)
+            move, action_probs, visit_counts, prior_probs = players[player_idx].get_move(self.board)
 
             # play the move on the board
             self.board.play_move(move)
