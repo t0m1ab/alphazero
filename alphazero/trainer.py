@@ -338,7 +338,7 @@ class AlphaZeroTrainer:
                 
                 log_probs, v = self.nn_twin(input)
 
-                loss = torch.sum((v - z) ** 2) - torch.sum(pi * log_probs)
+                loss = (torch.sum((v - z) ** 2) - torch.sum(pi * log_probs)) / self.config.batch_size
                 
                 loss.backward()
 
@@ -442,7 +442,7 @@ class AlphaZeroTrainer:
             
             # save loss values after each iteration
             self.save_player_loss(experiment_name)
-            
+
             if self.config.save_checkpoints: # save checkpoint in experiment_name/checkpoint/ directory
                 self.save_player_pt(
                     model_name=f"{experiment_name}-chkpt-{iter_idx+1}", 
