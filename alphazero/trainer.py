@@ -347,7 +347,12 @@ class AlphaZeroTrainer:
                 batch_losses.append(loss.cpu().item())
 
                 if self.verbose:
-                    pbar.set_postfix({"loss": batch_losses[-1]})
+                    pbar.set_postfix({
+                        "min_loss": np.min(batch_losses),
+                        "max_loss": np.max(batch_losses),
+                        "last_loss": batch_losses[-1],
+                        "mean_loss": np.mean(batch_losses),
+                    })
             
             self.loss_values[iter_idx][epoch_idx] = list(batch_losses)
     
