@@ -360,6 +360,7 @@ class AlphaZeroTrainer:
         """ Update the main network <self.nn> with the twin network <self.nn_twin>. """
         self.nn = self.nn_twin.clone()
         self.nn_twin = None
+        self.az_player.mct.nn = self.nn # update the nn used in the MCT during self-play with the new network
     
     def save_player_pt(self, model_name: str, path: str = None):
         """ Save the trained neural network. """
