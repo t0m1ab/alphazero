@@ -315,7 +315,8 @@ class AlphaZeroTrainer:
 
         self.nn_twin.train() # set the twin network in training mode
 
-        optimizer = torch.optim.SGD(self.nn_twin.parameters(), lr=self.config.learning_rate)
+        optimizer = torch.optim.SGD(self.nn_twin.parameters(), lr=self.config.learning_rate, momentum=0.9)
+        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
         self.print(f"\nNetwork optimization ({self.config.epochs} epochs)")
         for epoch_idx in range(self.config.epochs):
@@ -338,7 +339,9 @@ class AlphaZeroTrainer:
                 
                 log_probs, v = self.nn_twin(input)
 
-                loss = (torch.sum((v - z) ** 2) - torch.sum(pi * log_probs)) / self.config.batch_size
+                loss_pi = -torch.sum(pi * log_probs) / self.config.batch_size
+                loss_v = torch.sum((v - z) ** 2) / self.config.batch_size
+                loss = loss_pi + loss_v
                 
                 loss.backward()
 
@@ -348,14 +351,17 @@ class AlphaZeroTrainer:
 
                 if self.verbose:
                     pbar.set_postfix({
-                        "min_loss": np.min(batch_losses),
-                        "max_loss": np.max(batch_losses),
-                        "last_loss": batch_losses[-1],
+                        "lr": optimizer.param_groups[0]["lr"],
+                        "loss_pi": loss_pi.cpu().item(),
+                        "loss_v": loss_v.cpu().item(),
+                        "loss": batch_losses[-1],
                         "mean_loss": np.mean(batch_losses),
                     })
             
             self.loss_values[iter_idx][epoch_idx] = list(batch_losses)
-    
+
+            lr_scheduler.step()
+            
     def update_network(self, iter_idx: int):
         """ Update the main network <self.nn> with the twin network <self.nn_twin>. """
         self.nn = self.nn_twin.clone()
