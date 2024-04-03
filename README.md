@@ -36,43 +36,50 @@ All models and configuration files will be stored in a `models/` folder by defau
 
 ### alphazero/
 * `base`: implement parent classes such as *Board*, *Player*, *PolicyValueNetwork*...
-* `players.py`: implement different game strategies
-* `mcts.py`: implement Monte Carlo Tree Search
+* `players.py`: implement different game strategies (random, greedy, mcts, alphazero, human)
+* `mcts.py`: implement Monte Carlo Tree Search (rollout or neural evaluation mode)
+* `schedulers.py`: implement temperature schedulers for MCTS during AlphaZero training
 * `trainers.py`: implement a trainer for AlphaZero
-* `arena.py`: organize several games between players and compare results
-* `game_ui.py`: interface between user and algorithm to play a game (TODO using gradio)
-* `contests.py`: define specific contests between players
 * `timers.py`: define timers to perform alphazero training time estimation
+* `arena.py`: organize games between players and display results (sequential or parallel mode)
+* `game_ui.py`: interface between user and algorithm to play a game
+* `contests.py`: define specific contests between players
 * `utils.py`: utility functions
 * `tests.py`: contains various tests that can be run to check the implementation
 * `download.py`: run to download alphazero networks stored on a HuggingFace Hub
 * `run.sh`: run to launch a training
 
 ### alphazero/games/
-* `registers.py`: define configurations, boards and networks mapping for each game from their name
+* `registers.py`: define configurations, boards and networks mapping for each game using their name
 * `othello.py`: implementation of the Othello environment, game config and neural network for AlphaZero
-* `tictactoe.py`: TicTacToeNet TODO
-* `connect4.py`: TODO
+* `tictactoe.py`: implementation of the Connect4 environment, game config and neural network for AlphaZero
+* `connect4.py`: implementation of the Tictactoe environment, game config and neural network for AlphaZero
 
 ### docs/
 * `help.txt`: general informations
 
 ### figures/
-* `othello_board_8x8_init.png`: example of Othello 8x8 board display
+* `othello_board_example.png`: example of Othello 8x8 board display
+* `connect4_board_example.png`: example of Connect4 board display
+* `tictactoe_board_example.png`: example of Tictactoe board display
 
-<img src='./figures/othello_board_8x8_init.png' width='300'>
+<img src='./figures/othello_board_example.png' width='220'>
+<img src='./figures/connect4_board_example.png' width='256'>
+<img src='./figures/tictactoe_board_example.png' width='220'>
 
 ## 2 - Demo
 
 Go in the code folder `alphazero/` to execute any of the following commands.
 
-### 2.1 - Play against MCTSPlayer
+### 2.1 - Play against the machine with the CLI
+
+Use `game_cli.py` to launch a game against the machine. The state of the board will be automatically saved as a PNG file in `outputs/` and overwrite itself after each move. Examples of commands can be found below or at the end of `game_cli.py`. 
 
 ```bash
-python game_ui.py --game othello
+python game_ui.py --othello --mcts
+python game_ui.py --connect4 --net alphazero-connect4 --infos
+python game_ui.py --tictactoe --net alphazero-tictactoe --display pixel
 ```
-
-The state of the board will be automatically saved as a PNG file in `outputs/` and overwrite itself after each move. Change **othello** to **tictactoe** or **connect4** to play another game. Use flag **--help** to list available game flags.
 
 ### 2.2 - Compare machine players
 
@@ -90,7 +97,7 @@ bash run.sh
 
 Use the options of `trainer.py` in `run.sh` to change the name of the experiment, the game or the configuration.
 
-Save the default configurations as JSON files with the following command:
+Freeze the default configurations as JSON files with the following command:
 ```bash
 python trainers.py -f
 ```

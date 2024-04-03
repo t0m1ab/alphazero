@@ -11,6 +11,8 @@ from alphazero.games.connect4 import main as connect4_main
 
 # GAME REGISTERS
 
+GAMES_SET = set(["othello", "tictactoe", "connect4"])
+
 CONFIGS_REGISTER = {
     "othello": OthelloConfig,
     "tictactoe": TicTacToeConfig,
@@ -61,13 +63,20 @@ TEMP_SCHEDULERS = {
 
 def main():
 
-    configs_keys = set(CONFIGS_REGISTER.keys())
-    boards_keys = set(BOARDS_REGISTER.keys())
-    networks_keys = set(NETWORKS_REGISTER.keys())
-    move_formats_keys = set(MOVE_FORMATS_REGISTER.keys())
-    data_augm_strat = set(DATA_AUGMENT_STRATEGIES.keys())
-
-    assert configs_keys == boards_keys == networks_keys == move_formats_keys == data_augm_strat, "Game registers have different keys."
+    if not GAMES_SET == set(CONFIGS_REGISTER.keys()):
+        raise ValueError("Config register has different keys than GAME_SET.")
+    
+    if not GAMES_SET == set(BOARDS_REGISTER.keys()):
+        raise ValueError("Boards register has different keys than GAME_SET.")
+    
+    if not GAMES_SET == set(NETWORKS_REGISTER.keys()):
+        raise ValueError("Networks register has different keys than GAME_SET.")
+    
+    if not GAMES_SET == set(MOVE_FORMATS_REGISTER.keys()):
+        raise ValueError("Move formats register has different keys than GAME_SET.")
+    
+    if not GAMES_SET == set(DATA_AUGMENT_STRATEGIES.keys()):
+        raise ValueError("Data augmentation strategies register has different keys than GAME_SET.")
 
     othello_main()
     tictactoe_main()

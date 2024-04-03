@@ -16,6 +16,7 @@ from alphazero.players import AlphaZeroPlayer
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
 from alphazero.timers import SelfPlayTimer, NeuralTimer
 from alphazero.games.registers import (
+    GAMES_SET,
     CONFIGS_REGISTER, 
     BOARDS_REGISTER, 
     NETWORKS_REGISTER, 
@@ -483,7 +484,7 @@ def tests():
 
 def freeze_config(game: str = None):
     """ Freeze the configuration parameters for <game> or for all games if <game> is None. """
-    games = [game] if game is not None else CONFIGS_REGISTER.keys()
+    games = [game] if game is not None else list(GAMES_SET)
     Path(DEFAULT_CONFIGS_PATH).mkdir(parents=True, exist_ok=True)
     for game in games:
         config = AlphaZeroTrainer.load_config_from_json(game, json_config_file=None)
