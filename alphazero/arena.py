@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from tqdm import tqdm
 from multiprocessing.pool import Pool
 from time import time
@@ -122,7 +123,7 @@ class Arena():
         return_stats: bool = False,
         verbose: bool = False,
         call_id: int = None,
-    ) -> int:
+    ) -> dict:
         """
         Play n_rounds games between player1 and player2 and return the statistics of the games.
 
@@ -135,9 +136,15 @@ class Arena():
         """
         
         self.__check_inputs(n_rounds, start_player=start_player)
-        
+
         # store final score of each game for the winner and the number of draws
-        stats = {"player1": [], "player2": [], "draw": 0}
+        stats = {
+            "player1": [], # all scores for player1 victories
+            "player2": [], # all scores for player2 victories
+            "draw": 0, # total number of draws
+            "player1_starts": defaultdict(int), # store win/loss/draw counts when player1 starts
+            "player2_starts": defaultdict(int), # store win/loss/draw counts when player2 starts
+        }
 
         start_time = time()
         iterator = tqdm(range(n_rounds), desc=f"Playing {n_rounds} games", position=call_id if call_id is not None else 0)
@@ -158,8 +165,10 @@ class Arena():
             # store the results
             if results["winner"] == 0:
                 stats["draw"] += 1
+                stats[f"player{2 if p2s else 1}_starts"]["draw"] += 1
             else:
                 stats[f"player{results['winner']}"].append(results["score"])
+                stats[f"player{2 if p2s else 1}_starts"]["win" if results["winner"] == (2 if p2s else 1) else "loss"] += 1
         
             if verbose:
                 print(f"{self.player1} wins: {len(stats['player1'])}")
@@ -180,7 +189,7 @@ class Arena():
         n_process: int = None,
         verbose: bool = False,
         return_stats: bool = False,
-    ) -> int:
+    ) -> dict:
         """
         Play n_rounds games between player1 and player2 and return the statistics of the games.
         The games are played in parallel using n_process process.
@@ -226,11 +235,21 @@ class Arena():
         print(f"Total time = {time() - start_time:.2f} seconds")
 
         # merge stats from all arenas
-        stats = {"player1": [], "player2": [], "draw": 0}
-        for s in arenas_stats:
+        stats = {
+            "player1": [], # all scores for player1 victories
+            "player2": [], # all scores for player2 victories
+            "draw": 0, # total number of draws
+            "player1_starts": defaultdict(int), # store win/loss/draw counts when player1 starts
+            "player2_starts": defaultdict(int), # store win/loss/draw counts when player2 starts
+        }
+        for s, params in zip(arenas_stats, parameters):
             stats["player1"].extend(s["player1"])
             stats["player2"].extend(s["player2"])
             stats["draw"] += s["draw"]
+            start_player = f"player{params['start_player']}"
+            stats[f"{start_player}_starts"]["win"] += s[f'{start_player}_starts']["win"]
+            stats[f"{start_player}_starts"]["loss"] += s[f'{start_player}_starts']["loss"]
+            stats[f"{start_player}_starts"]["draw"] += s[f'{start_player}_starts']["draw"]
 
         if return_stats:
             return stats

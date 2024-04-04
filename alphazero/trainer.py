@@ -266,7 +266,7 @@ class AlphaZeroTrainer:
 
         if self.config.data_augmentation: # augment the memory with reflections and rotations
             augmented_samples = []
-            for sample in tqdm(self.memory, desc=f"Data augmentation ({len(self.memory)} samples)") if self.verbose else self.memory:
+            for sample in tqdm(self.memory, desc=f"Data augmentation (from {len(self.memory)} samples)") if self.verbose else self.memory:
                 if sample.move_idx >= 2: # symmetries are likely to produce copies for the first moves
                     reflected_sample = sample.create_reflection_twin(self.nn.reflect_neural_output, mode=self.data_augment_strategy.reflection)
                     augmented_samples.append(reflected_sample)
@@ -311,7 +311,7 @@ class AlphaZeroTrainer:
 
     def optimize_network(self, iter_idx: int):
         """ Update the neural network using the collected data in memory. """
-
+        from alphazero.games.connect4 import Connect4Board
         self.nn_twin = self.nn.clone() # create a twin network to train
 
         self.nn_twin.train() # set the twin network in training mode

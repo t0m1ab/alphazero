@@ -15,6 +15,9 @@ def show_results(player1: Player, player2: Player, stats: dict, ):
     print("\nRESULTS:")
     print(f"- {player1} wins = {len(stats['player1'])}/{n_rounds}")
     print(f"- {player2} wins = {len(stats['player2'])}/{n_rounds}")
+    print(f"- Draws = {stats['draw']}/{n_rounds}")
+    print(f"- {player1} results when starting: win={stats['player1_starts']['win']} | lose={stats['player1_starts']['loss']} | draw={stats['player1_starts']['draw']}")
+    print(f"- {player2} results when starting: win={stats['player2_starts']['win']} | lose={stats['player2_starts']['loss']} | draw={stats['player2_starts']['draw']}")
 
 
 def Greedy_vs_Random_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
@@ -125,7 +128,7 @@ def AZ_vs_Greedy_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: bool 
 
     net = TicTacToeNet(device="cpu") # cuda or mps device will not work for parallel games
     player1 = AlphaZeroPlayer(n_sim=100, nn=net, verbose=verbose)
-    player2 = GreedyPlayer()
+    player2 = MCTSPlayer(n_sim=100)
     board = TicTacToeBoard()
 
     arena = Arena(player1, player2, board)

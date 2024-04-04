@@ -201,8 +201,9 @@ class TicTacToeBoard(Board):
                         zorder=1
                     ))
 
-        # plt.grid(True, color="black", linewidth=1)
-        # plt.axis('off') # unnecessary if we remove the frame as below
+        ax.set_xticks([0,1,2,3])
+        ax.set_yticks([0,1,2,3])
+        plt.grid(True, color="black", linewidth=1)
         
         if show_indexes:
             eps = 0.15

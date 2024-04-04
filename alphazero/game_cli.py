@@ -9,11 +9,11 @@ from alphazero.games.connect4 import Connect4Board, Connect4Net
 from alphazero.games.registers import GAMES_SET, NETWORKS_REGISTER
 
 
-def othello(bot_player: Player, display_mode: str = None, show_probs: bool = False):
+def othello(bot_player: Player, bot_starts: bool = False, display_mode: str = None, show_probs: bool = False):
     """ Play Othello with CLI. """
-    player1 = HumanPlayer(game="othello")
+    human_player = HumanPlayer(game="othello")
     board = OthelloBoard(6, display_mode=display_mode)
-    arena = Arena(player1, bot_player, board)
+    arena = Arena(bot_player, human_player, board) if bot_starts else Arena(human_player, bot_player, board)
     arena.play_game(
         player2_starts=False, 
         verbose=True, 
@@ -24,11 +24,11 @@ def othello(bot_player: Player, display_mode: str = None, show_probs: bool = Fal
     )
 
 
-def tictactoe(bot_player: Player, display_mode: str = None, show_probs: bool = False):
+def tictactoe(bot_player: Player, bot_starts: bool = False, display_mode: str = None, show_probs: bool = False):
     """ Play TicTacToe with CLI. """
-    player1 = HumanPlayer(game="tictactoe")
+    human_player = HumanPlayer(game="tictactoe")
     board = TicTacToeBoard(display_mode=display_mode)
-    arena = Arena(player1, bot_player, board)
+    arena = Arena(bot_player, human_player, board) if bot_starts else Arena(human_player, bot_player, board)
     arena.play_game(
         player2_starts=False, 
         verbose=True, 
@@ -39,11 +39,11 @@ def tictactoe(bot_player: Player, display_mode: str = None, show_probs: bool = F
     )
 
 
-def connect4(bot_player: Player, display_mode: str = None, show_probs: bool = False):
+def connect4(bot_player: Player, bot_starts: bool = False, display_mode: str = None, show_probs: bool = False):
     """ Play Connect4 with CLI. """
-    player1 = HumanPlayer(game="connect4")
+    human_player = HumanPlayer(game="connect4")
     board = Connect4Board(width=7, height=6, display_mode=display_mode)
-    arena = Arena(player1, bot_player, board)
+    arena = Arena(bot_player, human_player, board) if bot_starts else Arena(human_player, bot_player, board)
     arena.play_game(
         player2_starts=False, 
         verbose=True, 
@@ -101,6 +101,13 @@ def main():
         help="name of the network to load into an AlphaZeroPlayer instance.",
     )
     parser.add_argument(
+        "-b",
+        "--bot-starts",
+        dest="bot_starts",
+        action="store_true",
+        help="if set then the bot starts the game.",
+    )
+    parser.add_argument(
         "-d",
         "--display",
         dest="display_mode",
@@ -143,7 +150,7 @@ def main():
     game_launcher = GAME_LAUNCHERS[game]
 
     # LAUNCH GAME
-    game_launcher(bot_player, display_mode=args.display_mode, show_probs=args.infos)
+    game_launcher(bot_player, bot_starts=args.bot_starts, display_mode=args.display_mode, show_probs=args.infos)
 
 
 if __name__ == "__main__":
@@ -153,4 +160,4 @@ if __name__ == "__main__":
     # python game_cli.py --tictactoe --greedy
     # python game_cli.py --connect4 --mcts
     # python game_cli.py --othello --net "alphazero-othello-6x6" --infos
-    # python game_cli.py --tictactoe -n "alphazero-tictactoe" --display "pixel"
+    # python game_cli.py --tictactoe -n "alphazero-tictactoe" --display "pixel" --bot-starts
