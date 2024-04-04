@@ -36,6 +36,10 @@ class TicTacToeConfig(Config):
     learning_rate: float = 0.001 # (0.001)
     data_augmentation: bool = True
     device: str = "cpu"
+    # EVALUATION settings
+    eval_opponent: str = "mcts" # random | greedy | mcts
+    eval_episodes: int = 40
+    do_eval: bool = True
     # SAVE settings
     save: bool = True
     push: bool = False

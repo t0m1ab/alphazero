@@ -40,6 +40,12 @@ class LinearTemperatureScheduler(TemperatureScheduler):
             return 1 - (step - self.temp_max_step) / (self.temp_min_step - self.temp_max_step)
 
 
+TEMP_SCHEDULERS = {
+    "constant": ConstantTemperatureScheduler,
+    "linear": LinearTemperatureScheduler,
+}
+
+
 def main():
     
     _ = ConstantTemperatureScheduler(10, 10, 100)

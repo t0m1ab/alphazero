@@ -8,18 +8,6 @@ from alphazero.games.tictactoe import TicTacToeBoard, TicTacToeNet
 from alphazero.games.connect4 import Connect4Board, Connect4Net
 
 
-def show_results(player1: Player, player2: Player, stats: dict, ):
-    """ Print the results of a contest stored in <stats>. """
-    n_rounds = len(stats["player1"]) + len(stats["player2"]) + stats["draw"]
-    print(" ")
-    print("\nRESULTS:")
-    print(f"- {player1} wins = {len(stats['player1'])}/{n_rounds}")
-    print(f"- {player2} wins = {len(stats['player2'])}/{n_rounds}")
-    print(f"- Draws = {stats['draw']}/{n_rounds}")
-    print(f"- {player1} results when starting: win={stats['player1_starts']['win']} | lose={stats['player1_starts']['loss']} | draw={stats['player1_starts']['draw']}")
-    print(f"- {player2} results when starting: win={stats['player2_starts']['win']} | lose={stats['player2_starts']['loss']} | draw={stats['player2_starts']['draw']}")
-
-
 def Greedy_vs_Random_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between GreedyPlayer and RandomPlayer. """
 
@@ -34,7 +22,7 @@ def Greedy_vs_Random_Othello(n_rounds: int = 2, n_process: int = 1, verbose: boo
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=verbose, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 def MCTS_vs_Random_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between MCTSPlayer and RandomPlayer. """
@@ -51,7 +39,7 @@ def MCTS_vs_Random_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool 
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=verbose, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 def MCTS_vs_Greedy_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between MCTSPlayer and GreedyPlayer. """
@@ -67,7 +55,7 @@ def MCTS_vs_Greedy_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool 
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=verbose, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 def AZ_vs_Greedy_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between AlphaZeroPlayer and GreedyPlayer. """
@@ -88,7 +76,7 @@ def AZ_vs_Greedy_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = 
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=False, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 
 def MCTS_vs_Random_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
@@ -105,7 +93,7 @@ def MCTS_vs_Random_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: boo
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=verbose, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 def MCTS_vs_Greedy_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between MCTSPlayer and GreedyPlayer. """
@@ -121,7 +109,7 @@ def MCTS_vs_Greedy_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: boo
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=verbose, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 def AZ_vs_Greedy_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between AlphaZeroPlayer and GreedyPlayer. """
@@ -139,7 +127,7 @@ def AZ_vs_Greedy_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: bool 
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=False, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 
 def MCTS_vs_Random_Connect4(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
@@ -156,7 +144,7 @@ def MCTS_vs_Random_Connect4(n_rounds: int = 2, n_process: int = 1, verbose: bool
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=verbose, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 def MCTS_vs_Greedy_Connect4(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between MCTSPlayer and GreedyPlayer. """
@@ -172,7 +160,7 @@ def MCTS_vs_Greedy_Connect4(n_rounds: int = 2, n_process: int = 1, verbose: bool
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=verbose, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 def AZ_vs_Greedy_Connect4(n_rounds: int = 2, n_process: int = 1, verbose: bool = False):
     """ Organize a contest between AlphaZeroPlayer and GreedyPlayer. """
@@ -190,7 +178,7 @@ def AZ_vs_Greedy_Connect4(n_rounds: int = 2, n_process: int = 1, verbose: bool =
     else: # parallel (use all available cores if n_process is None)
         stats = arena.play_games_in_parallel(n_rounds, n_process=n_process, verbose=False, return_stats=True)
 
-    show_results(player1, player2, stats)
+    Arena.print_stats_results(player1, player2, stats)
 
 
 

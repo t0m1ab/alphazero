@@ -49,8 +49,8 @@ class Arena():
         # logs and/or displays
         if verbose:
             print(f"# Game {self.game.capitalize()} is starting with player {player_idx+1}!")
-            print(f"> Player 1 = {self.player1.__class__.__name__}")
-            print(f"> Player 2 = {self.player2.__class__.__name__}")
+            print(f"> Player 1 = {self.player1}")
+            print(f"> Player 2 = {self.player2}")
         if display:
             self.board.display(
                 show_indexes=show_indexes,
@@ -146,10 +146,9 @@ class Arena():
             "player2_starts": defaultdict(int), # store win/loss/draw counts when player2 starts
         }
 
+        pbar = tqdm(range(n_rounds), desc=f"Playing {n_rounds} games", position=call_id if call_id is not None else 0)
         start_time = time()
-        iterator = tqdm(range(n_rounds), desc=f"Playing {n_rounds} games", position=call_id if call_id is not None else 0)
-        start_time = time()
-        for round_idx in iterator:
+        for round_idx in pbar:
             
             # set the starting player
             if start_player == 1:
@@ -176,8 +175,10 @@ class Arena():
                 print(f"Draws: {stats['draw']}\n")
                 print(f"{self.player1} scores = {stats['player1']}")
                 print(f"{self.player2} scores = {stats['player2']}")
+            
+            pbar.set_postfix({"p1": len(stats["player1"]), "p2": len(stats["player2"]), "draw": stats["draw"]})
         
-        if call_id is None: # to avoid printing the total time in parallel mode
+        if verbose and call_id is None: # to avoid printing the total time in parallel mode
             print(f"Total time = {time() - start_time:.2f} seconds")
 
         if return_stats:
@@ -232,7 +233,8 @@ class Arena():
             futures = [pool.apply_async(func=arena_call, kwds=kwds) for arena_call, kwds in tasks]
             arenas_stats = [fut.get() for fut in futures]
         
-        print(f"Total time = {time() - start_time:.2f} seconds")
+        if verbose:
+            print(f"Total time = {time() - start_time:.2f} seconds")
 
         # merge stats from all arenas
         stats = {
@@ -253,6 +255,26 @@ class Arena():
 
         if return_stats:
             return stats
+    
+    @staticmethod
+    def print_stats_results(player1: Player, player2: Player, stats: dict):
+        """
+        Print the results of a contest between <player1> and <player2> stored in <stats>.
+        """
+
+        n_rounds = len(stats["player1"]) + len(stats["player2"]) + stats["draw"]
+        print("\nRESULTS:")
+
+        # global stats
+        print(f"- {player1} wins = {len(stats['player1'])}/{n_rounds}")
+        print(f"- {player2} wins = {len(stats['player2'])}/{n_rounds}")
+        print(f"- Draws = {stats['draw']}/{n_rounds}")
+
+        # stats by starting player
+        p1_starts = stats["player1_starts"]
+        p2_starts = stats["player2_starts"]
+        print(f"- {player1} results when starting: win={p1_starts['win']} | lose={p1_starts['loss']} | draw={p1_starts['draw']}")
+        print(f"- {player2} results when starting: win={p2_starts['win']} | lose={p2_starts['loss']} | draw={p2_starts['draw']}")
 
 
 def main():

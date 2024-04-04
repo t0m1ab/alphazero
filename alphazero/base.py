@@ -78,6 +78,10 @@ class Config():
     learning_rate: float = None
     data_augmentation: bool = False
     device: str = None
+    # EVALUATION settings
+    eval_opponent: str = "mcts" # random | greedy | mcts
+    eval_episodes: int = 10
+    do_eval: bool = False
     # SAVE settings
     save: bool = True
     push: bool = False
@@ -357,10 +361,10 @@ class PolicyValueNetwork(nn.Module):
         Therefore, the board should be switched if necessary.
         """
         input = torch.tensor(board.player * board.grid, dtype=torch.float, device=self.device)
-        torch_log_probs, torch_v = self.predict(input)
-        log_probs = torch_log_probs.cpu().numpy().reshape(-1)
+        torch_probs, torch_v = self.predict(input)
+        probs = torch_probs.cpu().numpy().reshape(-1)
         v = board.player * torch_v.cpu().item() # switch back the state evaluation if necessary
-        return log_probs, v
+        return probs, v
 
     @abstractmethod
     def get_normalized_probs(self, probs: np.ndarray, legal_moves: list[Action]) -> dict[Action, float]:

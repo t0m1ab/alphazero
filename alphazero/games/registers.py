@@ -1,6 +1,5 @@
 from alphazero.base import MoveFormat, DataTransf
 from alphazero.utils import dotdict
-from alphazero.schedulers import ConstantTemperatureScheduler, LinearTemperatureScheduler
 from alphazero.games.othello import OthelloConfig, OthelloBoard, OthelloNet
 from alphazero.games.tictactoe import TicTacToeConfig, TicTacToeBoard, TicTacToeNet
 from alphazero.games.connect4 import Connect4Config, Connect4Board, Connect4Net
@@ -8,8 +7,6 @@ from alphazero.games.othello import main as othello_main
 from alphazero.games.tictactoe import main as tictactoe_main
 from alphazero.games.connect4 import main as connect4_main
 
-
-# GAME REGISTERS
 
 GAMES_SET = set(["othello", "tictactoe", "connect4"])
 
@@ -50,14 +47,6 @@ DATA_AUGMENT_STRATEGIES = {
         "reflection": DataTransf.REFLECT_H,
         "rotations": [DataTransf.ROTATE_90, DataTransf.ROTATE_180, DataTransf.ROTATE_270],
     })
-}
-
-
-# TRAINING REGISTER
-
-TEMP_SCHEDULERS = {
-    "constant": ConstantTemperatureScheduler,
-    "linear": LinearTemperatureScheduler,
 }
 
 

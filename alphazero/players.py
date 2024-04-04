@@ -234,6 +234,19 @@ class AlphaZeroPlayer(MCTSPlayer):
         )
 
 
+# PLAYERS REGISTER
+
+PLAYERS_SET = set(["human", "random", "greedy", "mcts", "alphazero"])
+
+PLAYERS_REGISTER = {
+    "human": HumanPlayer,
+    "random": RandomPlayer,
+    "greedy": GreedyPlayer,
+    "mcts": MCTSPlayer,
+    "alphazero": AlphaZeroPlayer,
+}
+
+
 def main():
 
     _ = HumanPlayer()
@@ -247,6 +260,9 @@ def main():
 
     _ = AlphaZeroPlayer(compute_time=0.2)
     print("AlphaZeroPlayer created successfully!")
+
+    if not PLAYERS_SET == set(PLAYERS_REGISTER.keys()):
+        raise ValueError("Players register has different keys than PLAYERS_SET.")
 
 
 if __name__ == "__main__":

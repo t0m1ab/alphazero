@@ -12,15 +12,16 @@ from datetime import timedelta
 import alphazero
 from alphazero.base import Config, DataTransf
 from alphazero.utils import dotdict, push_model_to_hf_hub, DEFAULT_CONFIGS_PATH, DEFAULT_MODELS_PATH
-from alphazero.players import AlphaZeroPlayer
+from alphazero.players import HumanPlayer, RandomPlayer, GreedyPlayer, MCTSPlayer, AlphaZeroPlayer, PLAYERS_SET, PLAYERS_REGISTER
 from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
 from alphazero.timers import SelfPlayTimer, NeuralTimer
+from alphazero.schedulers import TEMP_SCHEDULERS
+from alphazero.arena import Arena
 from alphazero.games.registers import (
     GAMES_SET,
     CONFIGS_REGISTER, 
     BOARDS_REGISTER, 
     NETWORKS_REGISTER, 
-    TEMP_SCHEDULERS,
     DATA_AUGMENT_STRATEGIES,
 )
 
@@ -140,7 +141,8 @@ class AlphaZeroTrainer:
             return f"{self.__class__.__name__}"
         
     def print(self, log: str):
-        print(log) if self.verbose else None
+        if self.verbose:
+            print(log)
 
     @staticmethod
     def print_config(config: Config, verbose: bool = True):
@@ -160,7 +162,7 @@ class AlphaZeroTrainer:
             return CONFIGS_REGISTER[json_config.game](**json_config)
 
     @staticmethod
-    def get_training_time_estimation(game: str, json_config_file: str = None) -> float:
+    def estimate_training_duration(game: str, json_config_file: str = None):
         """ 
         Return the estimated time for the training. 
         Use SelfPlayTimer to estimate duration of an episode of the game.
@@ -191,18 +193,22 @@ class AlphaZeroTrainer:
         n_batches = n_samples // config.batch_size if config.batch_size < n_samples else 1
         epoch_optim_duration = batch_optim_duration * n_batches
         optim_duration = config.epochs * epoch_optim_duration
-        iter_duration = self_play_duration + optim_duration
-        training_duration = config.iterations * iter_duration
+        # approximate opponent player with alphazero playing duration
+        eval_duration = config.eval_episodes * episode_duration_sec if config.do_eval else 0
+        iter_duration = self_play_duration + optim_duration + eval_duration
+        total_duration = config.iterations * iter_duration
 
         # print the results
         sp_datetime = str(timedelta(seconds=round(self_play_duration)))
         opt_datetime = str(timedelta(seconds=round(optim_duration)))
         iter_datetime = str(timedelta(seconds=round(iter_duration)))
-        train_datetime = str(timedelta(seconds=round(training_duration)))
+        eval_datetime = str(timedelta(seconds=round(eval_duration)))
+        total_datetime = str(timedelta(seconds=round(total_duration)))
         print(f"Self-play duration: {sp_datetime} (h:m:s)")
         print(f"Optimization duration: {opt_datetime} (h:m:s)")
         print(f"Iteration duration: {iter_datetime} (h:m:s)")
-        print(f"Training duration: {train_datetime} (h:m:s)")
+        print(f"Evaluation duration: {eval_datetime} (h:m:s)")
+        print(f"TOTAL training duration: {total_datetime} (h:m:s)")
 
     def self_play(self, iter_idx: int):
         """ Simulate self-play games and add the generated data to the memory. """
@@ -277,7 +283,7 @@ class AlphaZeroTrainer:
         
         self.print(f"Total number of samples: {len(self.memory)}")
            
-    def _memory_generator(self, n_batches: int):
+    def _batch_generator(self, n_batches: int):
         """ Generator to iterate over the samples in the memory with the required batch size. """
 
         # shuffle the memory (by index)
@@ -324,15 +330,18 @@ class AlphaZeroTrainer:
 
             batch_losses = []
 
-            n_batches = len(self.memory)//self.config.batch_size if self.config.batch_size < len(self.memory) else 1
+            n_batches = len(self.memory) // self.config.batch_size
+            if n_batches == 0:
+                raise ValueError(f"Too few samples in the memory ({len(self.memory)}) to create a batch with batch_size = {self.config.batch_size}")
+            
             if self.verbose:
                 pbar = tqdm(
-                    self._memory_generator(n_batches), 
+                    self._batch_generator(n_batches), 
                     total=n_batches,
                     desc=f"Epoch {epoch_idx+1}/{self.config.epochs}",
                 )
             else:
-                pbar = self._memory_generator(n_batches)
+                pbar = self._batch_generator(n_batches)
             
             for input, pi, z in pbar:
                 
@@ -368,6 +377,40 @@ class AlphaZeroTrainer:
         self.nn = self.nn_twin.clone()
         self.nn_twin = None
         self.az_player.mct.nn = self.nn # update the nn used in the MCT during self-play with the new network
+    
+    def __check_opponent(self):
+        """ Check if the opponent player is valid if <self.config.do_eval> is true. """
+        if self.config.do_eval:
+            if self.config.eval_opponent not in PLAYERS_SET:
+                raise ValueError(f"Opponent player '{self.config.eval_opponent}' not found in the players register.")
+            if self.config.eval_opponent == "human":
+                raise ValueError("Evaluation against a HumanPlayer during training is not allowed.")
+            if self.config.eval_opponent == "alphazero":
+                raise ValueError("Evaluation against another AlphaZeroPlayer during training is not yet implemented.")
+
+    def evaluate(self):
+        """
+        Evaluate the trained neural network using opponent <self.config.eval_opponent> for <self.config.eval_episodes> games.
+        """
+        
+        kwargs = {}
+        if self.config.eval_opponent == "mcts":
+            kwargs["n_sim"] = self.config.simulations
+
+        opponent_player = PLAYERS_REGISTER[self.config.eval_opponent](**kwargs)
+
+        arena = Arena(
+            player1=self.az_player, 
+            player2=opponent_player, 
+            board=BOARDS_REGISTER[self.game](config=self.config)
+        )
+
+        self.print(f"\nAlphaZeroPlayer evaluation against {opponent_player} ({self.config.eval_episodes} episodes)")
+
+        stats = arena.play_games(n_rounds=self.config.eval_episodes, return_stats=True)
+
+        if self.verbose:
+            Arena.print_stats_results(self.az_player, opponent_player, stats)
     
     def save_player_pt(self, model_name: str, path: str = None):
         """ Save the trained neural network. """
@@ -432,6 +475,7 @@ class AlphaZeroTrainer:
         )
         self.data_augment_strategy = DATA_AUGMENT_STRATEGIES[self.game] if self.config.data_augmentation else None
         self.loss_values = defaultdict(dict) # ensure that loss values are reset
+        self.__check_opponent() # check if the opponent player is valid
 
         # print the configuration and save it in the new model directory
         self.print("")
@@ -456,12 +500,17 @@ class AlphaZeroTrainer:
             # save loss values after each iteration
             self.save_player_loss(experiment_name)
 
-            if self.config.save_checkpoints: # save checkpoint in experiment_name/checkpoint/ directory
+            # save checkpoint in experiment_name/checkpoint/ directory
+            if self.config.save_checkpoints:
                 self.save_player_pt(
                     model_name=f"{experiment_name}-chkpt-{iter_idx+1}", 
                     path=os.path.join(DEFAULT_MODELS_PATH, experiment_name, "checkpoints")
                 )
                 self.print(f"\n{self} checkpoint {iter_idx+1}/{self.config.iterations} successfully saved.")
+            
+            # evaluate the trained neural network against an opponent
+            if self.config.do_eval:
+                self.evaluate()
         
         if self.config.save:
             self.save_player_pt(experiment_name)
@@ -549,7 +598,7 @@ def main():
     args = parser.parse_args()
 
     if args.estimate:
-        AlphaZeroTrainer.get_training_time_estimation(args.game, args.json_config_file)
+        AlphaZeroTrainer.estimate_training_duration(args.game, args.json_config_file)
     elif args.freeze:
         freeze_config(game=args.game)
     else:

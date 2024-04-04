@@ -37,6 +37,10 @@ class Connect4Config(Config):
     learning_rate: float = 0.001 # (0.001)
     data_augmentation: bool = True
     device: str = "cpu"
+    # EVALUATION settings
+    eval_opponent: str = "mcts" # random | greedy | mcts
+    eval_episodes: int = 10
+    do_eval: bool = False
     # SAVE settings
     save: bool = False
     push: bool = False
