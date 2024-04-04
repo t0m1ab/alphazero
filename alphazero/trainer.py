@@ -316,7 +316,7 @@ class AlphaZeroTrainer:
 
         self.nn_twin.train() # set the twin network in training mode
 
-        optimizer = torch.optim.SGD(self.nn_twin.parameters(), lr=self.config.learning_rate, momentum=0.9)
+        optimizer = torch.optim.SGD(self.nn_twin.parameters(), lr=self.config.learning_rate, momentum=0.9, weight_decay=0.0001)
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
         self.print(f"\nNetwork optimization ({self.config.epochs} epochs)")
