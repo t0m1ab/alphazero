@@ -185,8 +185,8 @@ class MCT():
         if cloned_board.is_game_over():
             return cloned_board.get_winner()
         
-        # evaluation of the state of the cloned board from the viewpoint of the player that needs to play
-        probs, outcome = self._nn.evaluate(cloned_board) # v in [-1,1]
+        # evaluation of the state of the cloned board in [-1,1]: >0 value => 1 likely to win | <0 value => -1 likely to win
+        probs, outcome = self._nn.evaluate(cloned_board)
         if node._children_probs is None: # store the raw prior probs of the children of the node
             node._children_probs = probs
         else:
@@ -194,34 +194,34 @@ class MCT():
         
         return outcome
     
-    def back_propagate(self, node: Node, player_id: int, outcome: int) -> None:
-        """ Perform the BACKPROPAGATION step: update the statistics of the nodes on the path from the selected node to the root. """
+    def back_propagate(self, node: Node, player_id: int, outcome: float) -> None:
+        """ 
+        Perform the BACKPROPAGATION step: update the statistics of the nodes on the path from the selected node to the root.
+        
+        ARGUMENTS:
+            - node: the selected node from which the simulation/evaluation was performed
+            - player_id: the id of the player that needs to play from the selected node
+            - outcome: value in [-1,1] which estimates/evaluates the winner of the game (0 if it's a draw)
+        """
 
         draw = (abs(outcome) < 1e-4) # useful if neural evaluation is too close to 0
 
         if draw:
             reward = 0
-        elif self.eval_method == TreeEval.ROLLOUT:
+        else:
             # node.Q is going to be updated with the reward value at the beginning of the while loop below
             # node.Q is the value of the action that led to node
-            # so if the player that needs to play from node is the winner, one must not try to get to node position again
-            # that means that node.Q must be penalized (-1) when player_id is the winner
-            reward = -1 if player_id == outcome else 1
-            # reward = 0 if player_id == outcome else 1 ### ALTERNATIVE UPDATE BUT WEAKER
-        elif self.eval_method == TreeEval.NEURAL:
-            reward = -1 if player_id == outcome else 1
-        
+            # so if the player that needs to play from node is the winner, one must try to avoid this position in the future
+            # that means that node.Q must be penalized with negative reward
+            # we use the condition (player_id * outcome > 0) to check safely if both values in [-1,1] have the same sign (i.e. penalization required)
+            reward = -abs(outcome) if player_id * outcome > 0 else abs(outcome)
+                
         while node is not None:
             node.Q = (node.N * node.Q + reward) / (node.N + 1) # update Q (expected reward of the transition that led to the node)
             node.N += 1 # update N (number of visits of the node <=> number of times the transition that led to the node was selected)
             node = node.parent
-            if draw:
-                reward = 0
-            elif self.eval_method == TreeEval.ROLLOUT:
-                reward = -reward # alterate the increment of the win count as we go up in the tree
-                # reward = 1 - reward ### ALTERNATIVE UPDATE BUT WEAKER
-            elif self.eval_method == TreeEval.NEURAL:
-                reward = -reward
+            reward = -reward # alterate reward (0 stays 0 if draw)
+
     
     def __search_iter(self, cloned_board: Board) -> None:
         """ A single iteration of the search loop. """
@@ -243,9 +243,9 @@ class MCT():
         player_to_play = cloned_board.player # id of the player that needs to play from the selected node
 
         if self.eval_method == TreeEval.ROLLOUT:
-            outcome = self.rollout(cloned_board) # player id of the winner (0 if it's a draw)
+            outcome = float(self.rollout(cloned_board)) # player id of the winner (0 if it's a draw)
         elif self.eval_method == TreeEval.NEURAL:
-            outcome = self.nn_evaluation(cloned_board, node) # player id of the winner (0 if it's a draw)
+            outcome = self.nn_evaluation(cloned_board, node) # player id estimation of the winner (0 if it's a draw)
 
         self.back_propagate(node, player_to_play, outcome)
 
