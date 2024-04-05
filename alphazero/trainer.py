@@ -17,6 +17,7 @@ from alphazero.games.othello import OthelloBoard, OthelloNet, OthelloConfig
 from alphazero.timers import SelfPlayTimer, NeuralTimer
 from alphazero.schedulers import TEMP_SCHEDULERS
 from alphazero.arena import Arena
+from alphazero.visualization import plot_loss, plot_eval_results
 from alphazero.games.registers import (
     GAMES_SET,
     CONFIGS_REGISTER, 
@@ -469,6 +470,7 @@ class AlphaZeroTrainer:
             game: str = None,
             experiment_name: str = None, 
             json_config_file: str = None,
+            plot: bool = False,
             verbose: bool = None
         ):
         """ Train the AlphaZero player for the specified game. """
@@ -555,6 +557,12 @@ class AlphaZeroTrainer:
                     chkpt_name = f"{experiment_name}-chkpt-{iter_idx+1}"
                     chkpts_files[f"{chkpt_name}.pt"] = os.path.join(DEFAULT_MODELS_PATH, experiment_name, f"checkpoints/{chkpt_name}.pt")
             push_model_to_hf_hub(model_name=experiment_name, additional_files=chkpts_files, verbose=self.verbose)
+        
+        if plot:
+            self.print("\n[5] Plotting training results...")
+            plot_loss(model_name=experiment_name)
+            if self.config.do_eval:
+                plot_eval_results(model_name=experiment_name)
 
 
 def tests():
@@ -603,11 +611,18 @@ def main():
         help="path to a JSON config file for the training.",
     )
     parser.add_argument(
+        "-p",
+        "--no-plot",
+        dest="no_plot",
+        action="store_true",
+        default=False,
+        help="if set then don't plot the training loss and evaluation results.",
+    )
+    parser.add_argument(
         "-q",
         "--quiet",
         dest="quiet",
         action="store_true",
-        default=False,
         help="if set then verbose is set to False during download.",
     )
     parser.add_argument(
@@ -615,7 +630,6 @@ def main():
         "--estimate",
         dest="estimate",
         action="store_true",
-        default=False,
         help="if set then only perform training time estimation.",
     )
     parser.add_argument(
@@ -623,7 +637,6 @@ def main():
         "--freeze",
         dest="freeze",
         action="store_true",
-        default=False,
         help="if set then only save all game configurations in DEFAULT_CONFIGS_PATH.",
     )
     args = parser.parse_args()
@@ -638,6 +651,7 @@ def main():
             game=args.game,
             json_config_file=args.json_config_file,
             experiment_name=args.experiment_name,
+            plot=not(args.no_plot),
         )
 
 
