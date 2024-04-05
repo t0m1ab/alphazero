@@ -25,12 +25,12 @@ class TicTacToeConfig(Config):
     compute_time: float = None # None to use simulations # (None)
     dirichlet_alpha: float = 0.03 # (0.3)
     dirichlet_epsilon: float = 0.25 # (0.25)
-    temp_scheduler_type: str = "linear" # linear | constant | exponential # (linear)
-    temp_max_step: int = 2 # temperature = 1 until step temp_step_max in every game # (30)
-    temp_min_step: int = 2 # temperature = 0 from step temp_step_min until the end of the game # (10)
+    temp_scheduler_type: str = "linear" # linear | constant | exponential
+    temp_max_step: int = 2 # temperature = 1 until step temp_step_max in every game
+    temp_min_step: int = 2 # temperature = 0 from step temp_step_min until the end of the game
     # TRAINING settings
     iterations: int = 30 # (30)
-    episodes: int = 200 # (100)
+    episodes: int = 100 # (100)
     epochs: int = 10 # (10)
     batch_size: int = 64 # (64)
     learning_rate: float = 0.001 # (0.001)
@@ -38,7 +38,7 @@ class TicTacToeConfig(Config):
     device: str = "cpu"
     # EVALUATION settings
     eval_opponent: str = "mcts" # random | greedy | mcts
-    eval_episodes: int = 40
+    eval_episodes: int = 100
     do_eval: bool = True
     # SAVE settings
     save: bool = True

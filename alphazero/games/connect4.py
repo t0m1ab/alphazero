@@ -26,12 +26,12 @@ class Connect4Config(Config):
     compute_time: float = None # None to use simulations # (None)
     dirichlet_alpha: float = 0.03 # (0.3)
     dirichlet_epsilon: float = 0.25 # (0.25)
-    temp_scheduler_type: str = "linear" # linear | constant | exponential # (linear)
-    temp_max_step: int = 15 # temperature = 1 until step temp_step_max in every game # (30)
-    temp_min_step: int = 20 # temperature = 0 from step temp_step_min until the end of the game # (10)
+    temp_scheduler_type: str = "linear" # linear | constant | exponential
+    temp_max_step: int = 4 # temperature = 1 until step temp_step_max in every game
+    temp_min_step: int = 4 # temperature = 0 from step temp_step_min until the end of the game
     # TRAINING settings
     iterations: int = 30 # (30)
-    episodes: int = 100 # (100)
+    episodes: int = 200 # (100)
     epochs: int = 10 # (10)
     batch_size: int = 64 # (64)
     learning_rate: float = 0.001 # (0.001)
@@ -39,10 +39,10 @@ class Connect4Config(Config):
     device: str = "cpu"
     # EVALUATION settings
     eval_opponent: str = "mcts" # random | greedy | mcts
-    eval_episodes: int = 10
-    do_eval: bool = False
+    eval_episodes: int = 40
+    do_eval: bool = True
     # SAVE settings
-    save: bool = False
+    save: bool = True
     push: bool = False
     save_checkpoints: bool = True
     push_checkpoints: bool = False

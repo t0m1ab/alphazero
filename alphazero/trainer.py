@@ -132,7 +132,7 @@ class AlphaZeroTrainer:
         self.data_augment_strategy = None # dict: data augmentation strategy for the game
         self.memory = None # list[Sample]: list storing normalize samples to use nn training
         self.verbose = verbose # bool
-        self.loss_values = defaultdict(dict) # store loss values for each iteration and epoch
+        self.loss_values = None # dict: store loss values for each iteration and epoch
     
     def __str__(self) -> str:
         if self.game is not None:
@@ -325,10 +325,12 @@ class AlphaZeroTrainer:
         optimizer = torch.optim.SGD(self.nn_twin.parameters(), lr=self.config.learning_rate, momentum=0.9, weight_decay=0.0001)
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
+        self.loss_values[iter_idx] = dict()
         self.print(f"\nNetwork optimization ({self.config.epochs} epochs)")
         for epoch_idx in range(self.config.epochs):
 
-            batch_losses = []
+            batch_pi_losses = []
+            batch_v_losses = []
 
             n_batches = len(self.memory) // self.config.batch_size
             if n_batches == 0:
@@ -357,18 +359,22 @@ class AlphaZeroTrainer:
 
                 optimizer.step()
 
-                batch_losses.append(loss.cpu().item())
+                batch_pi_losses.append(loss_pi.cpu().item())
+                batch_v_losses.append(loss_v.cpu().item())
 
                 if self.verbose:
                     pbar.set_postfix({
                         "lr": optimizer.param_groups[0]["lr"],
                         "loss_pi": loss_pi.cpu().item(),
                         "loss_v": loss_v.cpu().item(),
-                        "loss": batch_losses[-1],
-                        "mean_loss": np.mean(batch_losses),
+                        "loss": batch_pi_losses[-1] + batch_v_losses[-1],
+                        "mean_loss": np.mean(batch_pi_losses) + np.mean(batch_v_losses),
                     })
             
-            self.loss_values[iter_idx][epoch_idx] = list(batch_losses)
+            self.loss_values[iter_idx][epoch_idx] = {
+                "pi": list(batch_pi_losses),
+                "v": list(batch_v_losses),
+            }
 
             lr_scheduler.step()
             
@@ -474,8 +480,8 @@ class AlphaZeroTrainer:
             max_steps=self.board.max_moves,
         )
         self.data_augment_strategy = DATA_AUGMENT_STRATEGIES[self.game] if self.config.data_augmentation else None
-        self.loss_values = defaultdict(dict) # ensure that loss values are reset
         self.__check_opponent() # check if the opponent player is valid
+        self.loss_values = dict()
 
         # print the configuration and save it in the new model directory
         self.print("")
