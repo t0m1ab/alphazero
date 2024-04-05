@@ -133,6 +133,7 @@ class AlphaZeroTrainer:
         self.memory = None # list[Sample]: list storing normalize samples to use nn training
         self.verbose = verbose # bool
         self.loss_values = None # dict: store loss values for each iteration and epoch
+        self.eval_results = None # dict: store evaluation results for each iteration (if self.config.do_eval is True)
     
     def __str__(self) -> str:
         if self.game is not None:
@@ -384,20 +385,32 @@ class AlphaZeroTrainer:
         self.nn_twin = None
         self.az_player.mct.nn = self.nn # update the nn used in the MCT during self-play with the new network
     
-    def __check_opponent(self):
+    def __init_evaluator(self):
         """ Check if the opponent player is valid if <self.config.do_eval> is true. """
-        if self.config.do_eval:
-            if self.config.eval_opponent not in PLAYERS_SET:
-                raise ValueError(f"Opponent player '{self.config.eval_opponent}' not found in the players register.")
-            if self.config.eval_opponent == "human":
-                raise ValueError("Evaluation against a HumanPlayer during training is not allowed.")
-            if self.config.eval_opponent == "alphazero":
-                raise ValueError("Evaluation against another AlphaZeroPlayer during training is not yet implemented.")
 
-    def evaluate(self):
+        if not self.config.do_eval:
+            return
+
+        if self.config.eval_opponent not in PLAYERS_SET:
+            raise ValueError(f"Opponent player '{self.config.eval_opponent}' not found in the players register.")
+        if self.config.eval_opponent == "human":
+            raise ValueError("Evaluation against a HumanPlayer during training is not allowed.")
+        if self.config.eval_opponent == "alphazero":
+            raise ValueError("Evaluation against another AlphaZeroPlayer during training is not yet implemented.")
+        
+        self.eval_results = {
+            "eval_opponent": self.config.eval_opponent,
+            "eval_episodes": self.config.eval_episodes,
+            "results": dict(),
+        }
+
+    def evaluate(self, iter_idx: int):
         """
         Evaluate the trained neural network using opponent <self.config.eval_opponent> for <self.config.eval_episodes> games.
         """
+
+        if not self.config.do_eval:
+            return
         
         kwargs = {}
         if self.config.eval_opponent == "mcts":
@@ -417,6 +430,12 @@ class AlphaZeroTrainer:
 
         if self.verbose:
             Arena.print_stats_results(self.az_player, opponent_player, stats)
+
+        for key in ["player1", "player2", "draw"]:
+            stats.pop(key) if key in stats else None
+        self.eval_results["results"][iter_idx] = stats
+        self.eval_results["player1"] = f"{self.az_player}"
+        self.eval_results["player2"] = f"{opponent_player}"
     
     def save_player_pt(self, model_name: str, path: str = None):
         """ Save the trained neural network. """
@@ -431,12 +450,19 @@ class AlphaZeroTrainer:
         with open(os.path.join(path, "config.json"), "w") as f:
             json.dump(self.config.to_dict(), f, indent=4)
     
-    def save_player_loss(self, model_name: str, path: str = None):
-        """ Save the trained neural network. """
+    def save_training_stats(self, model_name: str, path: str = None):
+        """ Save training informations like loss and evaluation results. """
         path = os.path.join(DEFAULT_MODELS_PATH, model_name) if path is None else path
         Path(path).mkdir(parents=True, exist_ok=True)
+
+        # save loss values
         with open(os.path.join(path, "loss.json"), "w") as f:
             json.dump(self.loss_values, f, indent=4)
+
+        # save evaluation results
+        if self.config.do_eval:
+            with open(os.path.join(path, "eval.json"), "w") as f:
+                json.dump(self.eval_results, f, indent=4)
 
     def train(
             self,
@@ -480,7 +506,7 @@ class AlphaZeroTrainer:
             max_steps=self.board.max_moves,
         )
         self.data_augment_strategy = DATA_AUGMENT_STRATEGIES[self.game] if self.config.data_augmentation else None
-        self.__check_opponent() # check if the opponent player is valid
+        self.__init_evaluator() # check if the opponent player is valid and init self.eval_results
         self.loss_values = dict()
 
         # print the configuration and save it in the new model directory
@@ -502,9 +528,12 @@ class AlphaZeroTrainer:
 
             # update the main network with the twin network
             self.update_network(iter_idx)
-            
-            # save loss values after each iteration
-            self.save_player_loss(experiment_name)
+
+            # evaluate the trained neural network against an opponent
+            self.evaluate(iter_idx)
+
+            # save loss values (+ evaluation results)
+            self.save_training_stats(experiment_name)
 
             # save checkpoint in experiment_name/checkpoint/ directory
             if self.config.save_checkpoints:
@@ -513,11 +542,7 @@ class AlphaZeroTrainer:
                     path=os.path.join(DEFAULT_MODELS_PATH, experiment_name, "checkpoints")
                 )
                 self.print(f"\n{self} checkpoint {iter_idx+1}/{self.config.iterations} successfully saved.")
-            
-            # evaluate the trained neural network against an opponent
-            if self.config.do_eval:
-                self.evaluate()
-        
+                    
         if self.config.save:
             self.save_player_pt(experiment_name)
             self.print(f"\n[3] {self} successfully saved!")
