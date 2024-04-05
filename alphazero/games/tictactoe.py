@@ -23,7 +23,7 @@ class TicTacToeConfig(Config):
     # PLAYER settings
     simulations: int = 100 # None to use compute_time # (100)
     compute_time: float = None # None to use simulations # (None)
-    dirichlet_alpha: float = 0.03 # (0.3)
+    dirichlet_alpha: float = 0.03 # (0.03)
     dirichlet_epsilon: float = 0.25 # (0.25)
     temp_scheduler_type: str = "linear" # linear | constant | exponential
     temp_max_step: int = 2 # temperature = 1 until step temp_step_max in every game
@@ -33,7 +33,7 @@ class TicTacToeConfig(Config):
     episodes: int = 100 # (100)
     epochs: int = 10 # (10)
     batch_size: int = 64 # (64)
-    learning_rate: float = 0.001 # (0.001)
+    learning_rate: float = 0.01 # linear decay with gamma=0.9
     data_augmentation: bool = True
     device: str = "cpu"
     # EVALUATION settings
