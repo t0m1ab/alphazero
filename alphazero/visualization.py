@@ -10,6 +10,7 @@ from alphazero.utils import DEFAULT_MODELS_PATH
 def plot_loss(
         model_name: str,
         max_iterations: int = None,
+        x_ticks: int = None,
         path: str = None,
     ):
     """
@@ -71,18 +72,21 @@ def plot_loss(
     total_loss_epochs = pi_loss_epochs + v_loss_epochs
 
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(10, 10))
+
+    x_ticks = x_ticks if x_ticks is not None else 5
+
     ax[0].plot(all_pi_loss, label="pi loss", alpha=0.5, color="tab:blue")
     ax[0].plot(all_v_loss, label="v loss", alpha=0.5, color="tab:orange")
     ax[0].plot(step_after_epoch.reshape(-1), pi_loss_epochs.reshape(-1), label="pi loss (mean over epoch)", marker="o", color="tab:blue")
     ax[0].plot(step_after_epoch.reshape(-1), v_loss_epochs.reshape(-1), label="v loss (mean over epoch)", marker="o", color="tab:orange")
-    ax[0].set_xticks(step_after_iteration[::5], labels=[f"{i}" for i in range(0, iterations+1, 5)])
+    ax[0].set_xticks(step_after_iteration[::x_ticks], labels=[f"{i}" for i in range(0, iterations+1, x_ticks)])
     ax[0].set_ylabel("loss")
     ax[0].grid()
     ax[0].legend(loc="upper right")
 
     ax[1].plot(total_loss, label="loss", alpha=0.5, color="tab:green")
     ax[1].plot(step_after_epoch.reshape(-1), total_loss_epochs.reshape(-1), label="loss (mean over epoch)", marker="o", color="tab:green")
-    ax[1].set_xticks(step_after_iteration[::5], labels=[f"{i}" for i in range(0, iterations+1, 5)])
+    ax[1].set_xticks(step_after_iteration[::x_ticks], labels=[f"{i}" for i in range(0, iterations+1, x_ticks)])
     ax[1].set_xlabel(f"policy iteration (total optimization steps = {len(total_loss)})")
     ax[1].set_ylabel("loss")
     ax[1].grid()
@@ -97,6 +101,7 @@ def plot_loss(
 def plot_eval_results(
         model_name: str,
         max_iterations: int = None,
+        x_ticks: int = None,
         path: str = None,
     ):
     """
@@ -135,12 +140,12 @@ def plot_eval_results(
     plt.plot(iteration_indexes, az_wins, label=f"{model_name} wins", marker="o", color="tab:green")
     plt.plot(iteration_indexes, opponent_wins, label=f"{eval_results['eval_opponent']} wins", marker="o", color="tab:orange")
     plt.plot(iteration_indexes, draws, label="draws", marker="o", color="tab:blue")
-    plt.xticks(range(0, iterations+1, 5))
+    plt.xticks(range(0, iterations+1, x_ticks if x_ticks is not None else 5))
     plt.xlabel("evaluation iteration")
     plt.yticks(range(0, n_episodes+1, 20))
     plt.ylabel("number of games")
     plt.grid()
-    plt.legend(loc="upper right")
+    plt.legend(loc="center right")
 
     fig.suptitle(f"Evaluation of {model_name} against {eval_results['eval_opponent'].upper()} player during training over {n_episodes} games", fontweight="bold")
     fig.tight_layout()
@@ -167,14 +172,30 @@ def main():
         default=None, 
         help="maximum number of iterations to plot."
     )
+    parser.add_argument(
+        "--x-ticks", 
+        "-x", 
+        dest="x_ticks",
+        type=int, 
+        default=None, 
+        help="x-ticks step for plotting."
+    )
 
     args = parser.parse_args()
 
     # create loss plot
-    plot_loss(model_name=args.model_name, max_iterations=args.max_iterations)
+    plot_loss(
+        model_name=args.model_name, 
+        max_iterations=args.max_iterations,
+        x_ticks=args.x_ticks,
+    )
 
     # create evaluation results plot
-    plot_eval_results(model_name=args.model_name, max_iterations=args.max_iterations)
+    plot_eval_results(
+        model_name=args.model_name, 
+        max_iterations=args.max_iterations,
+        x_ticks=args.x_ticks,
+    )
 
 
 if __name__ == "__main__":
