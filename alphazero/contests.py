@@ -63,8 +63,8 @@ def AZ_vs_Greedy_Othello(n_rounds: int = 2, n_process: int = 1, verbose: bool = 
     n = 6
 
     net = OthelloNet(n=n, device="cpu") # cuda or mps device will not work for parallel games
-    # net = OthelloNet.from_pretrained(model_name="alphazero-othello")
-    player1 = AlphaZeroPlayer(compute_time=0.2, nn=net, verbose=verbose)
+    # net = OthelloNet.from_pretrained(model_name="alphazero-othello") # uncomment this line to use a pretrained model
+    player1 = AlphaZeroPlayer(n_sim=100, nn=net, verbose=verbose)
     player2 = GreedyPlayer()
     board = OthelloBoard(n=n)
 
@@ -115,6 +115,7 @@ def AZ_vs_Greedy_TicTacToe(n_rounds: int = 2, n_process: int = 1, verbose: bool 
     """ Organize a contest between AlphaZeroPlayer and GreedyPlayer. """
 
     net = TicTacToeNet(device="cpu") # cuda or mps device will not work for parallel games
+    # net = TicTacToeNet.from_pretrained(model_name="alphazero-tictactoe") # uncomment this line to use a pretrained model
     player1 = AlphaZeroPlayer(n_sim=100, nn=net, verbose=verbose)
     player2 = MCTSPlayer(n_sim=100)
     board = TicTacToeBoard()
@@ -166,7 +167,8 @@ def AZ_vs_Greedy_Connect4(n_rounds: int = 2, n_process: int = 1, verbose: bool =
     """ Organize a contest between AlphaZeroPlayer and GreedyPlayer. """
 
     net = Connect4Net(board_width=7, board_height=6, device="cpu") # cuda or mps device will not work for parallel games
-    player1 = AlphaZeroPlayer(n_sim=1000, nn=net, verbose=verbose)
+    # net = Connect4Net.from_pretrained(model_name="alphazero-connect4") # uncomment this line to use a pretrained model
+    player1 = AlphaZeroPlayer(n_sim=100, nn=net, verbose=verbose)
     player2 = GreedyPlayer()
     board = Connect4Board(width=7, height=6)
 
@@ -184,16 +186,18 @@ def AZ_vs_Greedy_Connect4(n_rounds: int = 2, n_process: int = 1, verbose: bool =
 
 if __name__ == "__main__":
 
-    # Greedy_vs_Random_Othello(n_rounds=1000, n_process=1, verbose=False)
+    # Greedy_vs_Random_Othello(n_rounds=1000, n_process=10, verbose=False)
     # MCTS_vs_Random_Othello(n_rounds=100, n_process=10, verbose=False)
     # MCTS_vs_Greedy_Othello(n_rounds=100, n_process=10, verbose=False)
-    # AZ_vs_Greedy_Othello(n_rounds=50, n_process=10, verbose=False)
+    # AZ_vs_Greedy_Othello(n_rounds=100, n_process=4, verbose=False)
 
     # MCTS_vs_Random_TicTacToe(n_rounds=50, n_process=10, verbose=False)
     # MCTS_vs_Greedy_TicTacToe(n_rounds=50, n_process=10, verbose=False)
-    AZ_vs_Greedy_TicTacToe(n_rounds=100, n_process=10, verbose=False)
+    # AZ_vs_Greedy_TicTacToe(n_rounds=100, n_process=10, verbose=False)
 
     # MCTS_vs_Random_Connect4(n_rounds=50, n_process=10, verbose=False)
     # MCTS_vs_Greedy_Connect4(n_rounds=50, n_process=10, verbose=False)
-    # AZ_vs_Greedy_Connect4(n_rounds=10, n_process=1, verbose=False)
+    # AZ_vs_Greedy_Connect4(n_rounds=100, n_process=4, verbose=False)
+
+    print("Uncomment one of the previous lines to run a contest!")
 

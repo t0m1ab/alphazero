@@ -44,6 +44,7 @@ All models and configuration files will be stored in a `models/` folder by defau
 * `arena.py`: organize games between players and display results (sequential or parallel mode)
 * `game_ui.py`: interface between user and algorithm to play a game
 * `contests.py`: define specific contests between players
+* `visualization.py`: define plot functions to create training/evaluation graphs
 * `utils.py`: utility functions
 * `tests.py`: contains various tests that can be run to check the implementation
 * `download.py`: run to download alphazero networks stored on a HuggingFace Hub
@@ -59,9 +60,9 @@ All models and configuration files will be stored in a `models/` folder by defau
 * `help.txt`: general informations
 
 ### figures/
-* `othello_board_example.png`: example of Othello 8x8 board display
-* `connect4_board_example.png`: example of Connect4 board display
-* `tictactoe_board_example.png`: example of Tictactoe board display
+* `othello_board_example.png`: example of Othello 8x8 board with human display
+* `connect4_board_example.png`: example of Connect4 board with human display
+* `tictactoe_board_example.png`: example of Tictactoe board with human display
 
 <img src='./figures/othello_board_example.png' width='220'>
 <img src='./figures/connect4_board_example.png' width='256'>
@@ -76,9 +77,9 @@ Go in the code folder `alphazero/` to execute any of the following commands.
 Use `game_cli.py` to launch a game against the machine. The state of the board will be automatically saved as a PNG file in `outputs/` and overwrite itself after each move. Examples of commands can be found below or at the end of `game_cli.py`. 
 
 ```bash
-python game_ui.py --othello --mcts
-python game_ui.py --connect4 --net alphazero-connect4 --infos
-python game_ui.py --tictactoe --net alphazero-tictactoe --display pixel
+python game_cli.py --othello --mcts
+python game_cli.py --othello --net alphazero-othello --infos --bot-starts
+python game_cli.py --tictactoe --net alphazero-tictactoe --display pixel
 ```
 
 ### 2.2 - Compare machine players
