@@ -273,8 +273,8 @@ class Arena():
         # stats by starting player
         p1_starts = stats["player1_starts"]
         p2_starts = stats["player2_starts"]
-        print(f"- {player1} results when starting: win={p1_starts['win']} | lose={p1_starts['loss']} | draw={p1_starts['draw']}")
-        print(f"- {player2} results when starting: win={p2_starts['win']} | lose={p2_starts['loss']} | draw={p2_starts['draw']}")
+        print(f"- {player1} results when starting: win={p1_starts['win']} | loose={p1_starts['loss']} | draw={p1_starts['draw']}")
+        print(f"- {player2} results when starting: win={p2_starts['win']} | loose={p2_starts['loss']} | draw={p2_starts['draw']}")
 
 
 def main():
