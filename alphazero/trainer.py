@@ -417,25 +417,32 @@ class AlphaZeroTrainer:
         if self.config.eval_opponent == "mcts":
             kwargs["n_sim"] = self.config.simulations
 
+        # create AlphaZero player for evaluation (no dirichlet noise)
+        eval_player = AlphaZeroPlayer(
+            n_sim=self.config.simulations, 
+            compute_time=self.config.compute_time, 
+            nn=self.nn,
+        )
+
+        # create opponent player for evaluation
         opponent_player = PLAYERS_REGISTER[self.config.eval_opponent](**kwargs)
 
         arena = Arena(
-            player1=self.az_player, 
+            player1=eval_player, 
             player2=opponent_player, 
             board=BOARDS_REGISTER[self.game](config=self.config)
         )
 
         self.print(f"\nAlphaZeroPlayer evaluation against {opponent_player} ({self.config.eval_episodes} episodes)")
-
         stats = arena.play_games(n_rounds=self.config.eval_episodes, return_stats=True)
 
         if self.verbose:
-            Arena.print_stats_results(self.az_player, opponent_player, stats)
+            Arena.print_stats_results(eval_player, opponent_player, stats)
 
         for key in ["player1", "player2", "draw"]:
             stats.pop(key) if key in stats else None
         self.eval_results["results"][iter_idx] = stats
-        self.eval_results["player1"] = f"{self.az_player}"
+        self.eval_results["player1"] = f"{eval_player}"
         self.eval_results["player2"] = f"{opponent_player}"
     
     def save_player_pt(self, model_name: str, path: str = None):
